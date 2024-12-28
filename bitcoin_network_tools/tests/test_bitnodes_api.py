@@ -179,6 +179,10 @@ class TestBitnodesAPI:
             ValueError, match="Record must be one of 'a', 'aaaa', 'txt'."
         ):
             bitnodesapi.get_dns_seeder("test")
+        with pytest.raises(ValueError, match="Resolver timeout must be at least 1 second."):
+            bitnodesapi.get_dns_seeder("a", timeout=0)
+        with pytest.raises(ValueError, match="Resolver lifetime must be at least 1 second."):
+            bitnodesapi.get_dns_seeder("a", lifetime=0)
         observed = bitnodesapi.get_dns_seeder("a")
         assert isinstance(observed, list)
         assert len(observed) > 0

@@ -1,5 +1,5 @@
 import requests
-import socket
+import dns.resolver
 
 
 # include a stack of latest call of each method?
@@ -74,7 +74,9 @@ class BitnodesAPI:
         response = requests.get(url)
         return response.json()
 
-    def get_nodes_list(self, timestamp: str = "latest", field: str = "user_agents") -> dict:
+    def get_nodes_list(
+        self, timestamp: str = "latest", field: str = "user_agents"
+    ) -> dict:
         """
         Retrieve the list of nodes from a snapshot.
 
@@ -93,7 +95,7 @@ class BitnodesAPI:
             A dictionary of the form
             timestamp: int (the timestamp of the snapshot)
             total_nodes: int (the total number of nodes as of the snapshot)
-            latest_height: the block height of the most recent block in the blockchain 
+            latest_height: the block height of the most recent block in the blockchain
                 at the time the snapshot was taken.
             nodes: list (a list of dictionaries, each containing information about a node):
                     Protocol version
@@ -302,8 +304,8 @@ class BitnodesAPI:
         """
         Get ranking and associated Peer Index (PIX) data for an activated node. New node must be
         activated separately, i.e. from https://bitnodes.io/nodes/<ADDRESS>-<PORT>/, before it
-        can be accessed from this endpoint. See https://bitnodes.io/nodes/leaderboard/#peer-index 
-        for more information. 
+        can be accessed from this endpoint. See https://bitnodes.io/nodes/leaderboard/#peer-index
+        for more information.
 
         Parameters
         ----------
@@ -418,7 +420,13 @@ class BitnodesAPI:
         response.raise_for_status()
         return response.json()
 
-    def get_dns_seeder(self, record: str = "AAAA", prefix: str = None) -> dict:
+    def get_dns_seeder(
+        self,
+        record: str = "AAAA",
+        prefix: str = None,
+        resolver_timeout: int = 10,
+        resolver_lifetime: int = 10,
+    ) -> list:
         """
         Get a list of reachable nodes to bootstrap your Bitcoin client
         connection to the Bitcoin network. The DNS records are generated using seeder.py at
@@ -441,19 +449,30 @@ class BitnodesAPI:
             - NODE_WITNESS (8)
             - NODE_NETWORK_LIMITED (1024).
             If not provided, all nodes are returned without filtering.
+        resolver_timeout: int
+            The maximum amount of time (in seconds) that a single DNS query will wait for a response.
+            If the query exceeds this duration, it will time out and raise a `LifetimeTimeout` error.
+            Default is 10 seconds.
+
+        resolver_lifetime: int
+            The total duration (in seconds) allowed for the DNS resolver to complete all retries
+            and queries for the given domain. This includes multiple attempts if the resolver retries
+            after a timeout or other transient errors. If the lifetime is exceeded, the query will fail
+            with a `LifetimeTimeout` error.
+            Default is 10 seconds.
 
         Returns
         -------
         list
-        A list of tuples, where each tuple represents a socket address for a resolved node.
-        Each tuple contains:
-            - Address Family: Indicates IPv4 (AF_INET) or IPv6 (AF_INET6).
-            - Socket Type: The type of socket (e.g., SOCK_STREAM for TCP, SOCK_DGRAM for UDP).
-            - Protocol: The protocol used (e.g., 6 for TCP, 17 for UDP).
-            - Canonical Name: Typically an empty string, unless a canonical name is resolved.
-            - Socket Address: A tuple containing:
-                - The IP address (IPv4 or IPv6).
-                - Additional fields (e.g., port, flow info, scope ID) depending on the address family.
+            A list of resolved records. The content of the list depends on the `record` type:            
+            - For "a" (IPv4): A list of IPv4 addresses as strings.
+            - For "aaaa" (IPv6): A list of IPv6 addresses as strings.
+            - For "txt" (Onion): A list of `.onion` addresses as strings, extracted from the TXT records.
+            Example outputs:
+                - ["192.0.2.1", "198.51.100.2"] for "a".
+                - ["2001:db8::1", "2001:db8::2"] for "aaaa".
+                - ["abcd1234.onion", "efgh5678.onion"] for "txt".
+
 
         Examples
         --------
@@ -461,15 +480,37 @@ class BitnodesAPI:
         if record.lower() not in ["a", "aaaa", "txt"]:
             raise ValueError("Record must be one of 'a', 'aaaa', 'txt'.")
         domain = f"{prefix}.seed.bitnodes.io" if prefix else "seed.bitnodes.io"
-        if record.lower() == "aaaa":
-            domain_records = socket.getaddrinfo(domain, None, socket.AF_INET6)
-        elif record.lower() == "a":
-            domain_records = socket.getaddrinfo(domain, None, socket.AF_INET)
-        # revisit tor domains. ipv4 won't work for tor
-        else:
-            domain_records = socket.getaddrinfo(domain, None, socket.AF_INET)
-        return domain_records
+        resolver = dns.resolver.Resolver()
+        try:
+            if record.lower() == "txt":
+                if not isinstance(resolver_timeout, int) or resolver_timeout < 1:
+                    raise ValueError("Resolver timeout must be at least 1 second.")
+                if not isinstance(resolver_lifetime, int) or resolver_lifetime < 1:
+                    raise ValueError("Resolver lifetime must be at least 1 second.")
+                resolver.timeout = resolver_timeout
+                resolver.lifetime = resolver_lifetime
+
+                txt_records = resolver.resolve(domain, "TXT")
+                onion_addresses = [
+                    txt_string.decode()
+                    for txt_record in txt_records
+                    for txt_string in txt_record.strings
+                    if ".onion" in txt_string.decode()
+                ]
+                return onion_addresses
+
+            elif record.lower() == "a":
+                a_records = resolver.resolve(domain, "A")
+                return [str(a_record) for a_record in a_records]
+
+            elif record.lower() == "aaaa":
+                aaaa_records = resolver.resolve(domain, "AAAA")
+                return [str(aaaa_record) for aaaa_record in aaaa_records]
+
+        except dns.exception.DNSException as e:
+            raise RuntimeError(f"An error occurred while querying DNS: {e}")
 
 
 if __name__ == "__main__":
     b = BitnodesAPI()
+    print(b.get_dns_seeder(record="aaaa"))
