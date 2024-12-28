@@ -10,6 +10,7 @@ setup(
     packages=["bitcoin_network_tools"],
     install_requires=[
         "requests",
+        "dnspython"
     ],
     entry_points={
         "console_scripts": [
@@ -25,7 +26,7 @@ setup(
     url="https://github.com/7astro7/bitcoin_network_tools",
     project_urls={"Tracker": "https://github.com/7astro7/bitcoin-network-tools/issues", 
                     "Source": "https://github.com/7astro7/bitcoin_network_tools"
-    } 
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
@@ -52,4 +53,4 @@ setup(
         "decentralized networks",
     ],
     platforms=["Any"]
-)
+    )
