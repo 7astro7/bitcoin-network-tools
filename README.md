@@ -1,5 +1,5 @@
 
-## Bit Net Analyzer
+## Bitcoin Network Tools
 
 A Python wrapper for https://bitnodes.io/api/. 
 Credit to this library for making this possible https://github.com/ayeowch/bitnodes.git

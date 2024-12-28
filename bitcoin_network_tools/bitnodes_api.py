@@ -36,9 +36,7 @@ class BitnodesAPI:
                 og_url_str = og_url_str[:-1]
         return og_url_str
 
-    def get_snapshots(
-        self, page: int = None, limit: int = None
-    ):
+    def get_snapshots(self, page: int = None, limit: int = None):
         """
         List all snapshots that are available on the server from the latest to
         oldest snapshot. Snapshots are currently kept on the server for up to 60 days.
@@ -60,21 +58,23 @@ class BitnodesAPI:
             "timestamp": 1656292357,
             "total_nodes": 14980,
             "latest_height": 742491
-            },... 
-        
+            },...
+
         Examples
         --------
 
         """
+        if page is not None and not isinstance(page, int):
+            raise ValueError("Page must be an integer.")
+        if limit is not None and not (1 <= limit <= 100):
+            raise ValueError("Limit must be an integer between 1 and 100.")
         url = f"{self.__base_url}snapshots/"
         optional_params = {"page": page, "limit": limit}
         url = self._add_optional_params(url, optional_params)
         response = requests.get(url)
         return response.json()
 
-    def get_nodes_list(
-        self, timestamp: str = "latest", field: str = None
-    ) -> dict:
+    def get_nodes_list(self, timestamp: str = "latest", field: str = "user_agents") -> dict:
         """
         Retrieve the list of nodes from a snapshot.
 
@@ -93,6 +93,8 @@ class BitnodesAPI:
             A dictionary of the form
             timestamp: int (the timestamp of the snapshot)
             total_nodes: int (the total number of nodes as of the snapshot)
+            latest_height: the block height of the most recent block in the blockchain 
+                at the time the snapshot was taken.
             nodes: list (a list of dictionaries, each containing information about a node):
                     Protocol version
                     User agent
@@ -108,9 +110,12 @@ class BitnodesAPI:
                     ASN
                     Organization name
         """
-        # create assertion for timestamp
         if field.lower() not in ["coordinates", "user_agents", None]:
             raise ValueError("Field must be either 'coordinates' or 'user_agents'.")
+        if timestamp != "latest" and not timestamp.isdigit():
+            raise ValueError(
+                "Timestamp must be a string representation of integer or 'latest'."
+            )
         url = f"{self.__base_url}snapshots/{timestamp}/"
         if timestamp != "latest" or field is not None:
             optimal_params = {}
@@ -123,7 +128,9 @@ class BitnodesAPI:
         response.raise_for_status()
         return response.json()
 
-    def get_addresses(self, page: int = None, limit: int = None, q: list = None):
+    def get_address_list(
+        self, page: int = None, limit: int = None, q: list[str] = None
+    ) -> dict:
         """
 
         Parameters
@@ -134,15 +141,25 @@ class BitnodesAPI:
             The number of addresses to retrieve. If None, default of 10 will be used. Max 100.
         q : list
             Search addresses.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the following keys: count, next, previous, results.
+            Results is a list of dictionaries of the form
+            [{
+            "address": "2a01:e34:ec76:c9d0:2520:5f4d:852d:3aa2",
+            "port": 8333
+            },...
         """
         if page is not None and not isinstance(page, int):
             raise ValueError("Page must be an integer.")
         if limit is not None and not (1 <= limit <= 100):
             raise ValueError("Limit must be an integer between 1 and 100.")
         if q is not None:
-            # check if q is iterable
-            # also, may need to join q into a string
-            pass
+            if not isinstance(q, list) or not all(isinstance(i, str) for i in q):
+                raise ValueError("q must be a list of strings.")
+            q = ",".join(q)
         url = f"{self.__base_url}addreses/"
         optional_params = {"page": page, "limit": limit, "q": q}
         url = self._add_optional_params(url, optional_params)
@@ -150,8 +167,7 @@ class BitnodesAPI:
         response.raise_for_status()
         return response.json()
 
-    # should probably make 8333 the default port
-    def get_node_status(self, address: str, port: int):
+    def get_node_status(self, address: str, port: int = 8333):
         """
         Get status for an activated node. New node must be activated separately, i.e.
         from https://bitnodes.io/nodes/<ADDRESS>-<PORT>/, before it can be accessed from
@@ -161,8 +177,8 @@ class BitnodesAPI:
         ----------
         address : str
             The IP address of the node.
-        port : int
-            The port of the node.
+        port : int, optional
+            The port of the node. Default is 8333.
 
         Returns
         -------
@@ -195,7 +211,7 @@ class BitnodesAPI:
         response.raise_for_status()
         return response.json()
 
-    def get_node_latency(self, address: str, port: int):
+    def get_node_latency(self, address: str, port: int = 8333):
         """
         Get daily, weekly and monthly latency data for an activated node. New node must be
         activated separately, i.e. from https://bitnodes.io/nodes/<ADDRESS>-<PORT>/, before
@@ -210,7 +226,7 @@ class BitnodesAPI:
         address : str
             The IP address of the node.
         port : int
-            The port of the node.
+            The port of the node. Default is 8333.
 
         Returns
         -------
@@ -282,18 +298,19 @@ class BitnodesAPI:
         response.raise_for_status()
         return response.json()
 
-    def get_node_ranking(self, address: str, port: int) -> dict:
+    def get_node_ranking(self, address: str, port: int = 8333) -> dict:
         """
         Get ranking and associated Peer Index (PIX) data for an activated node. New node must be
         activated separately, i.e. from https://bitnodes.io/nodes/<ADDRESS>-<PORT>/, before it
-        can be accessed from this endpoint.
+        can be accessed from this endpoint. See https://bitnodes.io/nodes/leaderboard/#peer-index 
+        for more information. 
 
         Parameters
         ----------
         address : str
             The IP address of the node.
         port : int
-            The port of the node.
+            The port of the node. Default is 8333.
 
         Returns
         -------
@@ -381,9 +398,9 @@ class BitnodesAPI:
             A dictionary containing inv_hash and stats.
             Values in stats represent the following information:
 
-            head - Arrival times for the first 10 (or 1000 for newer inv) nodes in 
+            head - Arrival times for the first 10 (or 1000 for newer inv) nodes in
                 a list of ["<ADDRESS>:<PORT>", <TIMESTAMP>].
-            min - Delta for earliest arrival time. Value can be 0 if the delta is 
+            min - Delta for earliest arrival time. Value can be 0 if the delta is
                 less than 1 millisecond.
             max - Delta for latest arrival time.
             mean - Average of deltas.
@@ -456,8 +473,3 @@ class BitnodesAPI:
 
 if __name__ == "__main__":
     b = BitnodesAPI()
-    print(
-        b.get_data_propogation(
-            "51b4cc62ca39f7f7d567b8288a5d73aa29e4e059282077b4fe06eb16db882f37"
-        )
-    )
