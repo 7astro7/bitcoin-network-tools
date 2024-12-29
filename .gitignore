@@ -3,3 +3,4 @@
 __pycache__
 todo.md
 *.egg*
+auth.py

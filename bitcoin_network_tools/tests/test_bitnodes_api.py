@@ -19,6 +19,12 @@ class TestBitnodesAPI:
         working_port = address_list["results"][0]["port"]
         return working_address, working_port
 
+    def test_validate_pagination(self, bitnodesapi: BitnodesAPI):
+        pass 
+
+    def test_validate_address_port(self, bitnodesapi: BitnodesAPI):
+        pass
+
     def test_add_optional_params(self, bitnodesapi: BitnodesAPI):
         """Test with optional parameters containing None values."""
         url = "https://bitnodes.io/api/v1/snapshots/"

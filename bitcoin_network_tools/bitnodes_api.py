@@ -11,6 +11,41 @@ class BitnodesAPI:
     def __init__(self):
         self.__base_url = "https://bitnodes.io/api/v1/"
 
+    @staticmethod
+    def _validate_pagination(page: int = None, limit: int = None) -> None:
+        """
+        Validate pagination parameters.
+
+        Parameters
+        ----------
+        page : int
+            The page number to retrieve.
+        limit : int
+            The number of addresses to retrieve. 
+        """
+        if page is not None and not isinstance(page, int):
+            raise ValueError("Page must be an integer.")
+        if limit is not None:
+            if not isinstance(limit, int) or not (1 <= limit <= 100):
+                raise ValueError("Limit must be an integer between 1 and 100.")
+            
+    @staticmethod
+    def _validate_address_port(address: str, port: int) -> None:
+        """
+        Validate the address and port parameters.
+
+        Parameters
+        ----------
+        address : str
+            The IP address of the node.
+        port : int
+            The port of the node.
+        """
+        if not isinstance(address, str) or not address:
+            raise ValueError("Address must be a non-empty string.")
+        if not isinstance(port, int) or not (1 <= port <= 65535):
+            raise ValueError("Port must be an integer between 1 and 65535.")
+
     def _add_optional_params(self, og_url_str: str, optional_params: dict) -> str:
         """
         Add optional parameters to the URL string.
@@ -64,10 +99,7 @@ class BitnodesAPI:
         --------
 
         """
-        if page is not None and not isinstance(page, int):
-            raise ValueError("Page must be an integer.")
-        if limit is not None and not (1 <= limit <= 100):
-            raise ValueError("Limit must be an integer between 1 and 100.")
+        self._validate_pagination(page, limit)
         url = f"{self.__base_url}snapshots/"
         optional_params = {"page": page, "limit": limit}
         url = self._add_optional_params(url, optional_params)
@@ -154,10 +186,7 @@ class BitnodesAPI:
             "port": 8333
             },...
         """
-        if page is not None and not isinstance(page, int):
-            raise ValueError("Page must be an integer.")
-        if limit is not None and not (1 <= limit <= 100):
-            raise ValueError("Limit must be an integer between 1 and 100.")
+        self._validate_pagination(page, limit)
         if q is not None:
             if not isinstance(q, list) or not all(isinstance(i, str) for i in q):
                 raise ValueError("q must be a list of strings.")
@@ -204,10 +233,7 @@ class BitnodesAPI:
         Examples
         --------
         """
-        if not isinstance(address, str) or not address:
-            raise ValueError("Address must be a non-empty string.")
-        if not isinstance(port, int) or not (1 <= port <= 65535):
-            raise ValueError("Port must be an integer between 1 and 65535.")
+        self._validate_address_port(address, port)
         url = f"{self.__base_url}nodes/{address}-{port}/"
         response = requests.get(url)
         response.raise_for_status()
@@ -239,10 +265,7 @@ class BitnodesAPI:
                 monthly: list of {timestamp: int, latency: int}
             Each list
         """
-        if not isinstance(address, str) or not address:
-            raise ValueError("Address must be a non-empty string.")
-        if not isinstance(port, int) or not (1 <= port <= 65535):
-            raise ValueError("Port must be an integer between 1 and 65535.")
+        self._validate_address_port(address, port)
         url = f"{self.__base_url}nodes/{address}-{port}/latency/"
         response = requests.get(url)
         response.raise_for_status()
@@ -289,10 +312,7 @@ class BitnodesAPI:
         Examples
         --------
         """
-        if page is not None and not isinstance(page, int):
-            raise ValueError("Page must be an integer.")
-        if limit is not None and not (1 <= limit <= 100):
-            raise ValueError("Limit must be an integer between 1 and 100.")
+        self._validate_pagination(page, limit)
         url = f"{self.__base_url}leaderboard/"
         optional_params = {"page": page, "limit": limit}
         url = self._add_optional_params(url, optional_params)
@@ -338,10 +358,7 @@ class BitnodesAPI:
                 "rank": 3619
             }
         """
-        if not isinstance(address, str) or not address:
-            raise ValueError("Address must be a non-empty string.")
-        if not isinstance(port, int) or not (1 <= port <= 65535):
-            raise ValueError("Port must be an integer between 1 and 65535.")
+        self._validate_address_port(address, port)
         url = f"{self.__base_url}nodes/leaderboard/{address}-{port}/"
         response = requests.get(url)
         response.raise_for_status()
@@ -372,10 +389,7 @@ class BitnodesAPI:
         Examples
         --------
         """
-        if page is not None and not isinstance(page, int):
-            raise ValueError("Page must be an integer.")
-        if limit is not None and not (1 <= limit <= 100):
-            raise ValueError("Limit must be an integer between 1 and 100.")
+        self._validate_pagination(page, limit)
         url = f"{self.__base_url}data-propagation/"
         optional_params = {"page": page, "limit": limit}
         url = self._add_optional_params(url, optional_params)
