@@ -27,15 +27,21 @@ class TestBitnodesAPI:
 
     def test_add_optional_params(self, bitnodesapi: BitnodesAPI):
         """Test with optional parameters containing None values."""
+        
+        # get snapshots
         url = "https://bitnodes.io/api/v1/snapshots/"
         params = {"page": 2, "limit": 100}
         result = bitnodesapi._add_optional_params(url, params)
         assert result == "https://bitnodes.io/api/v1/snapshots/?page=2&limit=100"
         # add tests for all other methods perhaps
 
+        # get address list
+        url = "https://bitnodes.io/api/v1/nodes/"
+
+
     def test_get_snapshots(self, bitnodesapi: BitnodesAPI):
         with pytest.raises(ValueError, match="Page must be an integer."):
-            bitnodesapi.get_snapshots(page=None)
+            bitnodesapi.get_snapshots(page="")
         with pytest.raises(
             ValueError, match="Limit must be an integer between 1 and 100."
         ):
@@ -57,16 +63,32 @@ class TestBitnodesAPI:
             match="Timestamp must be a string representation of integer or 'latest'.",
         ):
             bitnodesapi.get_nodes_list(timestamp="test")
-        observed = bitnodesapi.get_nodes_list(field="coordinates")
-        assert isinstance(observed, dict)
-        assert "timestamp" in observed.keys()
-        assert "total_nodes" in observed.keys()
-        assert "latest_height" in observed.keys()
-        assert "nodes" in observed.keys()
+        
+        observed_coordinates = bitnodesapi.get_nodes_list(field="coordinates")
+        assert isinstance(observed_coordinates, dict)
+        assert "timestamp" in observed_coordinates.keys()
+        assert "total_nodes" in observed_coordinates.keys()
+        assert "latest_height" in observed_coordinates.keys()
+        assert "coordinates" in observed_coordinates.keys()
+
+        observed_useragents = bitnodesapi.get_nodes_list(field="user_agents")
+        assert isinstance(observed_useragents, dict)
+        assert "timestamp" in observed_useragents.keys()
+        assert "total_nodes" in observed_useragents.keys()
+        assert "latest_height" in observed_useragents.keys()
+        assert "user_agents" in observed_useragents.keys()
+
+        observed_no_field = bitnodesapi.get_nodes_list()
+        assert isinstance(observed_no_field, dict)
+        assert "timestamp" in observed_no_field.keys()
+        assert "total_nodes" in observed_no_field.keys()
+        assert "latest_height" in observed_no_field.keys()
+        assert "nodes" in observed_no_field.keys()
+        
 
     def test_get_address_list(self, bitnodesapi: BitnodesAPI):
         with pytest.raises(ValueError, match="Page must be an integer."):
-            bitnodesapi.get_address_list(page=None)
+            bitnodesapi.get_address_list(page="")
         with pytest.raises(
             ValueError, match="Limit must be an integer between 1 and 100."
         ):

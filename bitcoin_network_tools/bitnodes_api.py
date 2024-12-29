@@ -1,5 +1,12 @@
 import requests
 import dns.resolver
+import hashlib
+import hmac
+import time
+import urllib.request
+import urllib.error
+import os
+import json
 
 
 # include a stack of latest call of each method?
@@ -8,8 +15,124 @@ class BitnodesAPI:
     Implementation of the Bitnodes API https://bitnodes.io/api/
     """
 
-    def __init__(self):
+    def __init__(self, public_api_key: str = None, private_key_path: str = None):
+        """
+        Construct Bitnodes API object. Private key can be used via setting
+        environment variable BITNODES_PRIVATE_KEY or by calling set_private_key_path.
+        In either case, the private key is only used ephemerally and never stored.
+
+        Parameters
+        ----------
+        public_api_key : str
+            The public API key for the Bitnodes API. If public_api_key is None and
+            BITNODES_PUBLIC_KEY is not set in the environment, the API will be used in
+            unauthenticated mode. Set the public API key using the set_public_api_key method.
+        path_to_private_key : str
+            The path to the private key file for the Bitnodes API. If None, the API will be
+            used in unauthenticated mode. Alternatively, the private key can be set using the
+            set_private_key_path method.
+
+        """
         self.__base_url = "https://bitnodes.io/api/v1/"
+        if "BITNODES_PUBLIC_KEY" in os.environ:
+            self.__public_api_key = os.environ["BITNODES_PUBLIC_KEY"]
+        else:
+            self.__public_api_key = public_api_key
+        no_private_key_found = (
+            private_key_path is None and "BITNODES_PRIVATE_KEY" not in os.environ
+        )
+        if public_api_key is None or no_private_key_found:
+            print("Warning: Bitnodes API is being used in unauthenticated mode.")
+
+    def set_public_api_key(self, public_api_key: str) -> bool:
+        """
+        Set the public API key for the Bitnodes API.
+
+        Parameters
+        ----------
+        public_api_key : str
+            The public API key for the Bitnodes API.
+
+        Returns
+        -------
+        bool
+            True if the public API key was set successfully.
+        """
+        if not public_api_key or not isinstance(public_api_key, str):
+            raise ValueError("Public API key must be a non-empty string.")
+        self.__public_api_key = public_api_key
+        return True
+
+    def get_public_api_key(self) -> str:
+        """
+        Get the public API key for the Bitnodes API.
+
+        Returns
+        -------
+        str
+            The public API key for the Bitnodes API.
+        """
+        return self.__public_api_key
+
+    def _set_private_key_path(self, path_to_private_key: str) -> bool:
+        """
+        Set the path to the private key for the Bitnodes API.
+
+        Parameters
+        ----------
+        path_to_private_key : str
+            The path to the private key file for the Bitnodes API.
+
+        Returns
+        -------
+        bool
+            True if the private key path was set successfully.
+        """
+        if not os.path.exists(path_to_private_key):
+            raise FileNotFoundError("The private key file does not exist.")
+        self.__private_key_path = path_to_private_key
+        return True
+
+    def _get_private_key(self) -> str:
+        """
+        Get the private key for the Bitnodes API.
+
+        Returns
+        -------
+        str
+            The private key for the Bitnodes API.
+        """
+        try:
+            if "BITNODES_PRIVATE_KEY" in os.environ:
+                return os.environ["BITNODES_PRIVATE_KEY"]
+            with open(self.__private_key_path, "r") as f:
+                return f.read()
+        except Exception as e:
+            raise RuntimeError(f"An error occurred while reading the private key: {e}")
+
+    def _generate_auth_headers(self, uri: str) -> dict:
+        """
+        Generate the authentication headers using the public key and a 
+        dynamically fetched private key.
+
+        Parameters:
+            uri (str): The full API endpoint URI.
+
+        Returns:
+            dict: The response from the API as a dictionary.
+        """
+        # Generate nonce (UNIX time in microseconds)
+        nonce = str(int(time.time() * 1_000_000))
+        message = f"{self.get_public_api_key()}:{nonce}:{uri}".encode()
+        sig = hmac.new(
+            self._get_private_key().encode(), message, hashlib.sha256
+        ).hexdigest()
+        return {
+            "pubkey": self.get_public_api_key(),
+            "nonce": nonce,
+            "sig": f"HMAC_SHA256:{sig}",
+        }
+
 
     @staticmethod
     def _validate_pagination(page: int = None, limit: int = None) -> None:
@@ -106,9 +229,7 @@ class BitnodesAPI:
         response = requests.get(url)
         return response.json()
 
-    def get_nodes_list(
-        self, timestamp: str = "latest", field: str = "user_agents"
-    ) -> dict:
+    def get_nodes_list(self, timestamp: str = "latest", field: str = None) -> dict:
         """
         Retrieve the list of nodes from a snapshot.
 
@@ -119,7 +240,7 @@ class BitnodesAPI:
         field : str
             Specify field=coordinates to get the list of unique latitude and longitude
             pairs or field=user_agents to get the list of unique user agents instead of
-            the full information listed below.
+            the full information listed below. If None, the full information is returned.
 
         Returns
         -------
@@ -129,6 +250,7 @@ class BitnodesAPI:
             total_nodes: int (the total number of nodes as of the snapshot)
             latest_height: the block height of the most recent block in the blockchain
                 at the time the snapshot was taken.
+            If no field is specified, the dictionary will also contain the following key:
             nodes: list (a list of dictionaries, each containing information about a node):
                     Protocol version
                     User agent
@@ -144,8 +266,12 @@ class BitnodesAPI:
                     ASN
                     Organization name
         """
-        if field.lower() not in ["coordinates", "user_agents", None]:
-            raise ValueError("Field must be either 'coordinates' or 'user_agents'.")
+        if field is not None:
+            if field.lower() not in [
+                "coordinates",
+                "user_agents",
+            ]:
+                raise ValueError("Field must be either 'coordinates' or 'user_agents'.")
         if timestamp != "latest" and not timestamp.isdigit():
             raise ValueError(
                 "Timestamp must be a string representation of integer or 'latest'."
@@ -166,6 +292,8 @@ class BitnodesAPI:
         self, page: int = None, limit: int = None, q: list[str] = None
     ) -> dict:
         """
+        List all IPv4/IPv6/.onion addresses observed by the Bitnodes crawler in
+        the Bitcoin peer-to-peer network.
 
         Parameters
         ----------
@@ -478,7 +606,7 @@ class BitnodesAPI:
         Returns
         -------
         list
-            A list of resolved records. The content of the list depends on the `record` type:            
+            A list of resolved records. The content of the list depends on the `record` type:
             - For "a" (IPv4): A list of IPv4 addresses as strings.
             - For "aaaa" (IPv6): A list of IPv6 addresses as strings.
             - For "txt" (Onion): A list of `.onion` addresses as strings, extracted from the TXT records.
@@ -527,4 +655,4 @@ class BitnodesAPI:
 
 if __name__ == "__main__":
     b = BitnodesAPI()
-    print(b.get_dns_seeder(record="aaaa"))
+    breakpoint()
