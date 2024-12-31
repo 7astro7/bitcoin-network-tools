@@ -1,5 +1,6 @@
 import pytest
 from bitcoin_network_tools.bitnodes_api import BitnodesAPI
+from urllib.parse import unquote
 
 
 class TestBitnodesAPI:
@@ -19,25 +20,43 @@ class TestBitnodesAPI:
         working_port = address_list["results"][0]["port"]
         return working_address, working_port
 
+    def test_constructor_prints(self):
+        pass
+
     def test_validate_pagination(self, bitnodesapi: BitnodesAPI):
-        pass 
+        pass
 
     def test_validate_address_port(self, bitnodesapi: BitnodesAPI):
         pass
 
     def test_add_optional_params(self, bitnodesapi: BitnodesAPI):
         """Test with optional parameters containing None values."""
-        
-        # get snapshots
-        url = "https://bitnodes.io/api/v1/snapshots/"
-        params = {"page": 2, "limit": 100}
-        result = bitnodesapi._add_optional_params(url, params)
-        assert result == "https://bitnodes.io/api/v1/snapshots/?page=2&limit=100"
-        # add tests for all other methods perhaps
 
-        # get address list
-        url = "https://bitnodes.io/api/v1/nodes/"
+        # URL for get_address_list
+        url = "https://bitnodes.io/api/v1/addresses/"
+        params = {
+            "page": 2,
+            "limit": 100,
+            "q": [
+            "2a01:e34:ec76:c9d0:2520:5f4d:852d:3aa2",
+            "2601:602:8d00:7070:1868:945c:98e6:d35",
+            ],
+        }
+        observed = bitnodesapi._add_optional_params(url, params)
+        expected = (
+            "https://bitnodes.io/api/v1/addresses/"
+            "?page=2&limit=100&"
+            "q=2a01:e34:ec76:c9d0:2520:5f4d:852d:3aa2&"
+            "q=2601:602:8d00:7070:1868:945c:98e6:d35"
+            )
+        assert unquote(observed) == expected
 
+        # URL for get_nodes_list
+        url = "https://bitnodes.io/api/v1/snapshots/latest/"
+        params = {"field": "coordinates"}
+        observed = bitnodesapi._add_optional_params(url, params)
+        expected = "https://bitnodes.io/api/v1/snapshots/latest/?field=coordinates"
+        assert unquote(observed) == expected
 
     def test_get_snapshots(self, bitnodesapi: BitnodesAPI):
         with pytest.raises(ValueError, match="Page must be an integer."):
@@ -63,7 +82,7 @@ class TestBitnodesAPI:
             match="Timestamp must be a string representation of integer or 'latest'.",
         ):
             bitnodesapi.get_nodes_list(timestamp="test")
-        
+
         observed_coordinates = bitnodesapi.get_nodes_list(field="coordinates")
         assert isinstance(observed_coordinates, dict)
         assert "timestamp" in observed_coordinates.keys()
@@ -84,7 +103,6 @@ class TestBitnodesAPI:
         assert "total_nodes" in observed_no_field.keys()
         assert "latest_height" in observed_no_field.keys()
         assert "nodes" in observed_no_field.keys()
-        
 
     def test_get_address_list(self, bitnodesapi: BitnodesAPI):
         with pytest.raises(ValueError, match="Page must be an integer."):
@@ -207,9 +225,13 @@ class TestBitnodesAPI:
             ValueError, match="Record must be one of 'a', 'aaaa', 'txt'."
         ):
             bitnodesapi.get_dns_seeder("test")
-        with pytest.raises(ValueError, match="Resolver timeout must be at least 1 second."):
+        with pytest.raises(
+            ValueError, match="Resolver timeout must be at least 1 second."
+        ):
             bitnodesapi.get_dns_seeder("a", timeout=0)
-        with pytest.raises(ValueError, match="Resolver lifetime must be at least 1 second."):
+        with pytest.raises(
+            ValueError, match="Resolver lifetime must be at least 1 second."
+        ):
             bitnodesapi.get_dns_seeder("a", lifetime=0)
         observed = bitnodesapi.get_dns_seeder("a")
         assert isinstance(observed, list)

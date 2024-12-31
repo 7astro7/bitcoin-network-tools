@@ -3,10 +3,8 @@ import dns.resolver
 import hashlib
 import hmac
 import time
-import urllib.request
-import urllib.error
 import os
-import json
+from urllib.parse import urlencode
 
 
 # include a stack of latest call of each method?
@@ -20,6 +18,7 @@ class BitnodesAPI:
         Construct Bitnodes API object. Private key can be used via setting
         environment variable BITNODES_PRIVATE_KEY or by calling set_private_key_path.
         In either case, the private key is only used ephemerally and never stored.
+        BITNODES_PUBLIC_KEY environment variable will also be used by default.
 
         Parameters
         ----------
@@ -41,7 +40,7 @@ class BitnodesAPI:
         no_private_key_found = (
             private_key_path is None and "BITNODES_PRIVATE_KEY" not in os.environ
         )
-        if public_api_key is None or no_private_key_found:
+        if self.__public_api_key is None or no_private_key_found:
             print("Warning: Bitnodes API is being used in unauthenticated mode.")
 
     def set_public_api_key(self, public_api_key: str) -> bool:
@@ -74,7 +73,7 @@ class BitnodesAPI:
         """
         return self.__public_api_key
 
-    def _set_private_key_path(self, path_to_private_key: str) -> bool:
+    def set_private_key_path(self, path_to_private_key: str) -> bool:
         """
         Set the path to the private key for the Bitnodes API.
 
@@ -106,33 +105,9 @@ class BitnodesAPI:
             if "BITNODES_PRIVATE_KEY" in os.environ:
                 return os.environ["BITNODES_PRIVATE_KEY"]
             with open(self.__private_key_path, "r") as f:
-                return f.read()
+                return f.read().strip()
         except Exception as e:
             raise RuntimeError(f"An error occurred while reading the private key: {e}")
-
-    def _generate_auth_headers(self, uri: str) -> dict:
-        """
-        Generate the authentication headers using the public key and a 
-        dynamically fetched private key.
-
-        Parameters:
-            uri (str): The full API endpoint URI.
-
-        Returns:
-            dict: The response from the API as a dictionary.
-        """
-        # Generate nonce (UNIX time in microseconds)
-        nonce = str(int(time.time() * 1_000_000))
-        message = f"{self.get_public_api_key()}:{nonce}:{uri}".encode()
-        sig = hmac.new(
-            self._get_private_key().encode(), message, hashlib.sha256
-        ).hexdigest()
-        return {
-            "pubkey": self.get_public_api_key(),
-            "nonce": nonce,
-            "sig": f"HMAC_SHA256:{sig}",
-        }
-
 
     @staticmethod
     def _validate_pagination(page: int = None, limit: int = None) -> None:
@@ -144,14 +119,14 @@ class BitnodesAPI:
         page : int
             The page number to retrieve.
         limit : int
-            The number of addresses to retrieve. 
+            The number of addresses to retrieve.
         """
         if page is not None and not isinstance(page, int):
             raise ValueError("Page must be an integer.")
         if limit is not None:
             if not isinstance(limit, int) or not (1 <= limit <= 100):
                 raise ValueError("Limit must be an integer between 1 and 100.")
-            
+
     @staticmethod
     def _validate_address_port(address: str, port: int) -> None:
         """
@@ -186,18 +161,17 @@ class BitnodesAPI:
             The URL string with the optional parameters added.
         """
         if optional_params:
-            og_url_str += "?"
-            for key, value in optional_params.items():
-                if value is not None:
-                    og_url_str += f"{key}={value}&"
-            if og_url_str[-1] == "&":
-                og_url_str = og_url_str[:-1]
+            filtered_params = {k: v for k, v in optional_params.items() if v is not None}
+            if filtered_params:
+                url = f"{og_url_str}?{urlencode(filtered_params, doseq=True)}"
+                return url
         return og_url_str
 
-    def get_snapshots(self, page: int = None, limit: int = None):
+    def get_snapshots(self, page: int = None, limit: int = None) -> dict:
         """
         List all snapshots that are available on the server from the latest to
         oldest snapshot. Snapshots are currently kept on the server for up to 60 days.
+        https://bitnodes.io/api/v1/snapshots/
 
         Parameters
         ----------
@@ -226,12 +200,26 @@ class BitnodesAPI:
         url = f"{self.__base_url}snapshots/"
         optional_params = {"page": page, "limit": limit}
         url = self._add_optional_params(url, optional_params)
-        response = requests.get(url)
+
+        headers = None
+        if self.__public_api_key:
+            nonce = str(int(time.time() * 1_000_000))
+            message = f"{self.get_public_api_key()}:{nonce}:{url}".encode()
+            sig = hmac.new(
+                self._get_private_key().encode(), message, hashlib.sha256
+            ).hexdigest()
+            headers = {
+                "pubkey": self.get_public_api_key(),
+                "nonce": nonce,
+                "sig": f"HMAC-SHA256:{sig}",
+            }
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
         return response.json()
 
     def get_nodes_list(self, timestamp: str = "latest", field: str = None) -> dict:
         """
-        Retrieve the list of nodes from a snapshot.
+        Retrieve the list of nodes from a snapshot. GET https://bitnodes.io/api/v1/snapshots/<TIMESTAMP>/
 
         Parameters
         ----------
@@ -284,7 +272,20 @@ class BitnodesAPI:
             if field is not None:
                 optimal_params["field"] = field
             url = self._add_optional_params(url, optimal_params)
-        response = requests.get(url)
+        
+        headers = None
+        if self.__public_api_key:
+            nonce = str(int(time.time() * 1_000_000))
+            message = f"{self.get_public_api_key()}:{nonce}:{url}".encode()
+            sig = hmac.new(
+                self._get_private_key().encode(), message, hashlib.sha256
+            ).hexdigest()
+            headers = {
+                "pubkey": self.get_public_api_key(),
+                "nonce": nonce,
+                "sig": f"HMAC-SHA256:{sig}",
+            }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
 
@@ -319,10 +320,23 @@ class BitnodesAPI:
             if not isinstance(q, list) or not all(isinstance(i, str) for i in q):
                 raise ValueError("q must be a list of strings.")
             q = ",".join(q)
-        url = f"{self.__base_url}addreses/"
+        url = f"{self.__base_url}addresses/"
         optional_params = {"page": page, "limit": limit, "q": q}
         url = self._add_optional_params(url, optional_params)
-        response = requests.get(url)
+
+        headers = None
+        if self.__public_api_key:
+            nonce = str(int(time.time() * 1_000_000))
+            message = f"{self.get_public_api_key()}:{nonce}:{url}".encode()
+            sig = hmac.new(
+                self._get_private_key().encode(), message, hashlib.sha256
+            ).hexdigest()
+            headers = {
+                "pubkey": self.get_public_api_key(),
+                "nonce": nonce,
+                "sig": f"HMAC-SHA256:{sig}",
+            }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
 
@@ -363,7 +377,20 @@ class BitnodesAPI:
         """
         self._validate_address_port(address, port)
         url = f"{self.__base_url}nodes/{address}-{port}/"
-        response = requests.get(url)
+
+        headers = None
+        if self.__public_api_key:
+            nonce = str(int(time.time() * 1_000_000))
+            message = f"{self.get_public_api_key()}:{nonce}:{url}".encode()
+            sig = hmac.new(
+                self._get_private_key().encode(), message, hashlib.sha256
+            ).hexdigest()
+            headers = {
+                "pubkey": self.get_public_api_key(),
+                "nonce": nonce,
+                "sig": f"HMAC-SHA256:{sig}",
+            }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
 
@@ -395,7 +422,20 @@ class BitnodesAPI:
         """
         self._validate_address_port(address, port)
         url = f"{self.__base_url}nodes/{address}-{port}/latency/"
-        response = requests.get(url)
+
+        headers = None
+        if self.__public_api_key:
+            nonce = str(int(time.time() * 1_000_000))
+            message = f"{self.get_public_api_key()}:{nonce}:{url}".encode()
+            sig = hmac.new(
+                self._get_private_key().encode(), message, hashlib.sha256
+            ).hexdigest()
+            headers = {
+                "pubkey": self.get_public_api_key(),
+                "nonce": nonce,
+                "sig": f"HMAC-SHA256:{sig}",
+            }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
 
@@ -444,7 +484,20 @@ class BitnodesAPI:
         url = f"{self.__base_url}leaderboard/"
         optional_params = {"page": page, "limit": limit}
         url = self._add_optional_params(url, optional_params)
-        response = requests.get(url)
+
+        headers = None
+        if self.__public_api_key:
+            nonce = str(int(time.time() * 1_000_000))
+            message = f"{self.get_public_api_key()}:{nonce}:{url}".encode()
+            sig = hmac.new(
+                self._get_private_key().encode(), message, hashlib.sha256
+            ).hexdigest()
+            headers = {
+                "pubkey": self.get_public_api_key(),
+                "nonce": nonce,
+                "sig": f"HMAC-SHA256:{sig}",
+            }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
 
@@ -488,7 +541,20 @@ class BitnodesAPI:
         """
         self._validate_address_port(address, port)
         url = f"{self.__base_url}nodes/leaderboard/{address}-{port}/"
-        response = requests.get(url)
+
+        headers = None
+        if self.__public_api_key:
+            nonce = str(int(time.time() * 1_000_000))
+            message = f"{self.get_public_api_key()}:{nonce}:{url}".encode()
+            sig = hmac.new(
+                self._get_private_key().encode(), message, hashlib.sha256
+            ).hexdigest()
+            headers = {
+                "pubkey": self.get_public_api_key(),
+                "nonce": nonce,
+                "sig": f"HMAC-SHA256:{sig}",
+            }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
 
@@ -521,7 +587,20 @@ class BitnodesAPI:
         url = f"{self.__base_url}data-propagation/"
         optional_params = {"page": page, "limit": limit}
         url = self._add_optional_params(url, optional_params)
-        response = requests.get(url)
+
+        headers = None
+        if self.__public_api_key:
+            nonce = str(int(time.time() * 1_000_000))
+            message = f"{self.get_public_api_key()}:{nonce}:{url}".encode()
+            sig = hmac.new(
+                self._get_private_key().encode(), message, hashlib.sha256
+            ).hexdigest()
+            headers = {
+                "pubkey": self.get_public_api_key(),
+                "nonce": nonce,
+                "sig": f"HMAC-SHA256:{sig}",
+            }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
 
@@ -558,7 +637,20 @@ class BitnodesAPI:
         if not inv_hash:
             raise ValueError("Inventory hash must be a non-empty string.")
         url = f"{self.__base_url}inv/{inv_hash}/"
-        response = requests.get(url)
+
+        headers = None
+        if self.__public_api_key:
+            nonce = str(int(time.time() * 1_000_000))
+            message = f"{self.get_public_api_key()}:{nonce}:{url}".encode()
+            sig = hmac.new(
+                self._get_private_key().encode(), message, hashlib.sha256
+            ).hexdigest()
+            headers = {
+                "pubkey": self.get_public_api_key(),
+                "nonce": nonce,
+                "sig": f"HMAC-SHA256:{sig}",
+            }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
 
@@ -651,8 +743,10 @@ class BitnodesAPI:
 
         except dns.exception.DNSException as e:
             raise RuntimeError(f"An error occurred while querying DNS: {e}")
+        
 
 
 if __name__ == "__main__":
     b = BitnodesAPI()
-    breakpoint()
+#    print(b.get_node_status())
+    print(b.get_dns_seeder2())

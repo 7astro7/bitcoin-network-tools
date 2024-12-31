@@ -18,3 +18,5 @@ A library for analyzing and monitoring Bitcoin network nodes
 If used without an api key, requests are limited to 50 per 24 hours. API keys are available at 
 https://bitnodes.io/api/
 
+BITNODES_PUBLIC_KEY, BITNODES_PRIVATE_KEY
+
