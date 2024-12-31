@@ -5,6 +5,7 @@ import hmac
 import time
 import os
 from urllib.parse import urlencode
+import warnings
 
 
 # include a stack of latest call of each method?
@@ -41,7 +42,10 @@ class BitnodesAPI:
             private_key_path is None and "BITNODES_PRIVATE_KEY" not in os.environ
         )
         if self.__public_api_key is None or no_private_key_found:
-            print("Warning: Bitnodes API is being used in unauthenticated mode.")
+            warnings.warn(
+                "Warning: Bitnodes API is being used in unauthenticated mode.",
+                UserWarning,
+            )
 
     def set_public_api_key(self, public_api_key: str) -> bool:
         """
@@ -161,7 +165,9 @@ class BitnodesAPI:
             The URL string with the optional parameters added.
         """
         if optional_params:
-            filtered_params = {k: v for k, v in optional_params.items() if v is not None}
+            filtered_params = {
+                k: v for k, v in optional_params.items() if v is not None
+            }
             if filtered_params:
                 url = f"{og_url_str}?{urlencode(filtered_params, doseq=True)}"
                 return url
@@ -272,7 +278,7 @@ class BitnodesAPI:
             if field is not None:
                 optimal_params["field"] = field
             url = self._add_optional_params(url, optimal_params)
-        
+
         headers = None
         if self.__public_api_key:
             nonce = str(int(time.time() * 1_000_000))
@@ -743,10 +749,9 @@ class BitnodesAPI:
 
         except dns.exception.DNSException as e:
             raise RuntimeError(f"An error occurred while querying DNS: {e}")
-        
 
 
 if __name__ == "__main__":
-    b = BitnodesAPI()
-#    print(b.get_node_status())
+    bn = BitnodesAPI()
+    #    print(b.get_node_status())
     print(b.get_dns_seeder2())
