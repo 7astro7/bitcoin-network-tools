@@ -2,6 +2,11 @@ import pytest
 from bitcoin_network_tools.bitnodes_api import BitnodesAPI
 from urllib.parse import unquote
 import tempfile
+import os
+
+ENV_API_KEY = (
+    "BITNODES_PUBLIC_KEY" in os.environ and "BITNODES_PRIVATE_KEY" in os.environ
+)
 
 
 class TestBitnodesAPI:
@@ -21,6 +26,7 @@ class TestBitnodesAPI:
         working_port = address_list["results"][0]["port"]
         return working_address, working_port
 
+    @pytest.mark.skipif(ENV_API_KEY, reason="API keys in env: no warning.")
     def test_constructor_warns_unauthenticated(self):
         with pytest.warns(
             UserWarning,
@@ -29,19 +35,23 @@ class TestBitnodesAPI:
             BitnodesAPI()
 
     def test_set_public_key(self, bitnodesapi: BitnodesAPI):
-        with pytest.raises(ValueError, match="Public API key must be a non-empty string."):
-            bitnodesapi.set_public_key(-9999)
-        
-        assert bitnodesapi.set_public_key("true because string")
+        with pytest.raises(
+            ValueError, match="Public API key must be a non-empty string."
+        ):
+            bitnodesapi.set_public_api_key(-9999)
 
-    def test_get_public_key(self, bitnodesapi: BitnodesAPI):
-        bn = BitnodesAPI(public_key="test_public_key")
+        assert bitnodesapi.set_public_api_key("true because string")
+
+    def test_get_public_key(self):
+        bn = BitnodesAPI(public_api_key="test_public_key")
         assert bn.get_public_api_key() == "test_public_key"
 
     def test_set_private_key_path(self, bitnodesapi: BitnodesAPI):
-        with pytest.raises(FileNotFoundError, match="The private key file does not exist.") as e:
+        with pytest.raises(
+            FileNotFoundError, match="The private key file does not exist."
+        ) as e:
             bitnodesapi.set_private_key_path("non_existent_file")
-        
+
         with tempfile.TemporaryFile() as f:
             f.write(b"mock_private_key")
             f.flush()
@@ -60,14 +70,26 @@ class TestBitnodesAPI:
     def test_validate_pagination(self):
         with pytest.raises(ValueError, match="Page must be an integer."):
             BitnodesAPI._validate_pagination(page="test")
-        with pytest.raises(ValueError, match="Limit must be an integer between 1 and 100."):
+        with pytest.raises(
+            ValueError, match="Limit must be an integer between 1 and 100."
+        ):
             BitnodesAPI._validate_pagination(limit=101)
 
     def test_validate_address_port(self):
         with pytest.raises(ValueError, match="Address must be a non-empty string."):
             BitnodesAPI._validate_address_port(address=None, port=8333)
-        with pytest.raises(ValueError, match="Port must be an integer between 1 and 65535."):
+
+        with pytest.raises(
+            ValueError, match="Port must be an integer between 1 and 65535."
+        ):
             BitnodesAPI._validate_address_port(address="-99", port=0)
+        with pytest.raises(
+            ValueError,
+            match="Port must be an integer or a string that can be converted to an integer.",
+        ):
+            BitnodesAPI._validate_address_port(
+                address="test_string", port="test_string"
+            )
 
     def test_add_optional_params(self, bitnodesapi: BitnodesAPI):
         """Test with optional parameters containing None values."""
@@ -98,7 +120,7 @@ class TestBitnodesAPI:
         expected = "https://bitnodes.io/api/v1/snapshots/latest/?field=coordinates"
         assert unquote(observed) == expected
 
-        # test for get nodes list 
+        # test for get nodes list
         url = "https://bitnodes.io/api/v1/nodes/leaderboard/"
         params = {"page": None, "limit": None}
         observed = bitnodesapi._add_optional_params(url, params)

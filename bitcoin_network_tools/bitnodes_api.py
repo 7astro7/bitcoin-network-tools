@@ -145,6 +145,13 @@ class BitnodesAPI:
         """
         if not isinstance(address, str) or not address:
             raise ValueError("Address must be a non-empty string.")
+
+        try:
+            port = int(port)
+        except (ValueError, TypeError):
+            raise ValueError(
+                "Port must be an integer or a string that can be converted to an integer."
+            )
         if not isinstance(port, int) or not (1 <= port <= 65535):
             raise ValueError("Port must be an integer between 1 and 65535.")
 
@@ -168,7 +175,7 @@ class BitnodesAPI:
         for k, v in params.items():
             if isinstance(v, list):
                 params[k] = ",".join(v)
-        
+
         return f"{og_url_str}?{urlencode(params)}" if params else og_url_str
 
     def get_snapshots(self, page: int = None, limit: int = None) -> dict:
@@ -199,7 +206,7 @@ class BitnodesAPI:
         Examples
         --------
         In [3]: bn.get_snapshots(limit=5)
-        Out[3]: 
+        Out[3]:
         {'count': 8614,
         'next': 'https://bitnodes.io/api/v1/snapshots/?limit=5&page=2',
         'previous': None,
@@ -281,11 +288,11 @@ class BitnodesAPI:
                     Timezone
                     ASN
                     Organization name
-        
+
         Examples
         --------
         In [6]: bn.get_nodes_list(timestamp="1735684735", field="user_agents")
-        Out[6]: 
+        Out[6]:
         {'timestamp': 1735684735,
         'total_nodes': 20772,
         'latest_height': 877253,
@@ -367,7 +374,7 @@ class BitnodesAPI:
 
         Examples
         --------
-        
+
         """
         self._validate_pagination(page, limit)
         if q is not None:
@@ -429,7 +436,7 @@ class BitnodesAPI:
         Examples
         --------
         In [4]: bn.get_node_status(address="31.47.202.112", port=8333)
-        Out[4]: 
+        Out[4]:
         {'address': '31.47.202.112',
         'status': 'UP',
         'data': [70016,
@@ -495,7 +502,7 @@ class BitnodesAPI:
         Examples
         --------
         In [5]: bn.get_node_latency(address="31.47.202.112", port=8333)
-        Out[5]: 
+        Out[5]:
         {'daily_latency': [{'t': 1735602300, 'v': 23},
         {'t': 1735603200, 'v': 23},
         {'t': 1735604100, 'v': 23},
@@ -576,8 +583,8 @@ class BitnodesAPI:
 
         Examples
         --------
-        In [4]: bn.get_leaderboard(limit=5) 
-        Out[4]: 
+        In [4]: bn.get_leaderboard(limit=5)
+        Out[4]:
         {'count': 13163,
         'next': 'https://bitnodes.io/api/v1/nodes/leaderboard/?limit=5&page=2',
         'previous': None,
@@ -680,8 +687,8 @@ class BitnodesAPI:
 
         Examples
         --------
-        In [6]: bn.get_node_ranking(address="31.47.202.112", port=8333) 
-        Out[6]: 
+        In [6]: bn.get_node_ranking(address="31.47.202.112", port=8333)
+        Out[6]:
         {'node': '31.47.202.112:8333',
         'vi': '1.0000',
         'si': '0.9907',
@@ -743,8 +750,8 @@ class BitnodesAPI:
 
         Examples
         --------
-        In [4]: bn.get_data_propagation_list(limit=5) 
-        Out[4]: 
+        In [4]: bn.get_data_propagation_list(limit=5)
+        Out[4]:
         {'count': 100000,
         'next': 'https://bitnodes.io/api/v1/inv/?limit=5&page=2',
         'previous': None,
@@ -804,8 +811,8 @@ class BitnodesAPI:
 
         Examples
         --------
-        In [5]: bn.get_data_propagation(inv_hash="51b4cc62ca39f7f7d567b8288a5d73aa29e4e059282077b4fe06eb16db882f37") 
-        Out[5]: 
+        In [5]: bn.get_data_propagation(inv_hash="51b4cc62ca39f7f7d567b8288a5d73aa29e4e059282077b4fe06eb16db882f37")
+        Out[5]:
         {'inv_hash': '51b4cc62ca39f7f7d567b8288a5d73aa29e4e059282077b4fe06eb16db882f37',
         'stats': {'mean': 8836,
         'std': 4040,
@@ -901,7 +908,7 @@ class BitnodesAPI:
         Examples
         --------
         In [4]: bn.get_dns_seeder(record="txt", prefix="x409")
-        Out[4]: 
+        Out[4]:
         ['b6occtielfswjoizrl6bxki7ecpl4zijqegd5dzk5e66s5fduyhbrtyd.onion',
         'bznwam37uhpeuodct2ppxkoe4h6xs37vjb64cpb22aiafh75vabqujqd.onion',
         'dgc6bwlf4ynzcm7xpfpu4wiefvlc7676fk4jkio6jnuiawktyruhdbyd.onion',
