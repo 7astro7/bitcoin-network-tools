@@ -164,14 +164,12 @@ class BitnodesAPI:
         str
             The URL string with the optional parameters added.
         """
-        if optional_params:
-            filtered_params = {
-                k: v for k, v in optional_params.items() if v is not None
-            }
-            if filtered_params:
-                url = f"{og_url_str}?{urlencode(filtered_params, doseq=True)}"
-                return url
-        return og_url_str
+        params = {k: v for k, v in optional_params.items() if v is not None}
+        for k, v in params.items():
+            if isinstance(v, list):
+                params[k] = ",".join(v)
+        
+        return f"{og_url_str}?{urlencode(params)}" if params else og_url_str
 
     def get_snapshots(self, page: int = None, limit: int = None) -> dict:
         """
@@ -200,7 +198,31 @@ class BitnodesAPI:
 
         Examples
         --------
-
+        In [3]: bn.get_snapshots(limit=5)
+        Out[3]: 
+        {'count': 8614,
+        'next': 'https://bitnodes.io/api/v1/snapshots/?limit=5&page=2',
+        'previous': None,
+        'results': [{'url': 'https://bitnodes.io/api/v1/snapshots/1735685327/',
+        'timestamp': 1735685327,
+        'total_nodes': 20773,
+        'latest_height': 877253},
+        {'url': 'https://bitnodes.io/api/v1/snapshots/1735684735/',
+        'timestamp': 1735684735,
+        'total_nodes': 20772,
+        'latest_height': 877253},
+        {'url': 'https://bitnodes.io/api/v1/snapshots/1735684143/',
+        'timestamp': 1735684143,
+        'total_nodes': 20464,
+        'latest_height': 877252},
+        {'url': 'https://bitnodes.io/api/v1/snapshots/1735683542/',
+        'timestamp': 1735683542,
+        'total_nodes': 20781,
+        'latest_height': 877252},
+        {'url': 'https://bitnodes.io/api/v1/snapshots/1735682930/',
+        'timestamp': 1735682930,
+        'total_nodes': 20214,
+        'latest_height': 877249}]}
         """
         self._validate_pagination(page, limit)
         url = f"{self.__base_url}snapshots/"
@@ -225,7 +247,7 @@ class BitnodesAPI:
 
     def get_nodes_list(self, timestamp: str = "latest", field: str = None) -> dict:
         """
-        Retrieve the list of nodes from a snapshot. GET https://bitnodes.io/api/v1/snapshots/<TIMESTAMP>/
+        Retrieve the list of reachable nodes from a snapshot.
 
         Parameters
         ----------
@@ -259,6 +281,28 @@ class BitnodesAPI:
                     Timezone
                     ASN
                     Organization name
+        
+        Examples
+        --------
+        In [6]: bn.get_nodes_list(timestamp="1735684735", field="user_agents")
+        Out[6]: 
+        {'timestamp': 1735684735,
+        'total_nodes': 20772,
+        'latest_height': 877253,
+        'user_agents': ['/Satoshi:27.1.0/',
+        '/Satoshi:27.0.0/',
+        '/Satoshi:28.0.0/',
+        '/Satoshi:24.1.0/',
+        '/Satoshi:26.0.0/',
+        '/Satoshi:23.0.0/',
+        '/Satoshi:27.0.0(RoninDojo 2.1.4)/',
+        '/Satoshi:25.1.0/',
+        ...
+        '/Bitcoin ABC:0.15.1(EB8.0)/',
+        '/Satoshi:28.0.0(barneyricket.com)/',
+        '/Satoshi:27.0.0(Samourai Dojo 1.24.1)/',
+        '/Satoshi:21.2.0/Knots:20210629/',
+        '/Satoshi:25.1.0(@devinbileck)/']}
         """
         if field is not None:
             if field.lower() not in [
@@ -308,7 +352,7 @@ class BitnodesAPI:
             The page number to retrieve. If None, default of current page (1) will be used.
         limit : int
             The number of addresses to retrieve. If None, default of 10 will be used. Max 100.
-        q : list
+        q : list[str]
             Search addresses.
 
         Returns
@@ -320,6 +364,10 @@ class BitnodesAPI:
             "address": "2a01:e34:ec76:c9d0:2520:5f4d:852d:3aa2",
             "port": 8333
             },...
+
+        Examples
+        --------
+        
         """
         self._validate_pagination(page, limit)
         if q is not None:
@@ -380,6 +428,25 @@ class BitnodesAPI:
 
         Examples
         --------
+        In [4]: bn.get_node_status(address="31.47.202.112", port=8333)
+        Out[4]: 
+        {'address': '31.47.202.112',
+        'status': 'UP',
+        'data': [70016,
+        '/Satoshi:27.1.0/',
+        1734410285,
+        3081,
+        877256,
+        'btc.dohmen.net',
+        'Gothenburg',
+        'SE',
+        57.7065,
+        11.967,
+        'Europe/Stockholm',
+        'AS34385',
+        'Tripnet AB'],
+        'mbps': '38.850493'}
+
         """
         self._validate_address_port(address, port)
         url = f"{self.__base_url}nodes/{address}-{port}/"
@@ -424,7 +491,31 @@ class BitnodesAPI:
                 daily: list of {timestamp: int, latency: int}
                 weekly: list of {timestamp: int, latency: int}
                 monthly: list of {timestamp: int, latency: int}
-            Each list
+
+        Examples
+        --------
+        In [5]: bn.get_node_latency(address="31.47.202.112", port=8333)
+        Out[5]: 
+        {'daily_latency': [{'t': 1735602300, 'v': 23},
+        {'t': 1735603200, 'v': 23},
+        {'t': 1735604100, 'v': 23},
+        {'t': 1735605000, 'v': 23},
+        {'t': 1735687800, 'v': 23},
+        ...
+        {'t': 1735688700, 'v': 23}],
+        'weekly_latency': [{'t': 1735081200, 'v': 23},
+        {'t': 1735084800, 'v': 23},
+        {'t': 1735088400, 'v': 23},
+        {'t': 1735678800, 'v': 23},
+        {'t': 1735682400, 'v': 23},
+        ...
+        {'t': 1735686000, 'v': 23}],
+        'monthly_latency': [{'t': 1704067200, 'v': 24},
+        {'t': 1704153600, 'v': 24},
+        {'t': 1704240000, 'v': 23},
+        {'t': 1735516800, 'v': 23},
+        ...
+        {'t': 1735603200, 'v': 23}]}
         """
         self._validate_address_port(address, port)
         url = f"{self.__base_url}nodes/{address}-{port}/latency/"
@@ -485,9 +576,51 @@ class BitnodesAPI:
 
         Examples
         --------
+        In [4]: bn.get_leaderboard(limit=5) 
+        Out[4]: 
+        {'count': 13163,
+        'next': 'https://bitnodes.io/api/v1/nodes/leaderboard/?limit=5&page=2',
+        'previous': None,
+        'results': [{'node': '[2001:1bc0:c1::2000]:8333',
+        'vi': '1.0000',
+        'si': '0.9907',
+        'hi': '1.0000',
+        'ai': '0.9357',
+        'pi': '1.0000',
+        'dli': '1.0000',
+        'dui': '1.0000',
+        'wli': '1.0000',
+        'wui': '1.0000',
+        'mli': '1.0000',
+        'mui': '1.0000',
+        'nsi': '0.9769',
+        'ni': '0.9916',
+        'bi': '1.0000',
+        'peer_index': '9.9249',
+        'rank': 1},
+        {'node': '31.47.202.112:8333',
+        'vi': '1.0000',
+        'si': '0.9907',
+        'hi': '1.0000',
+        'ai': '0.9801',
+        'pi': '1.0000',
+        'dli': '1.0000',
+        'dui': '1.0000',
+        'wli': '1.0000',
+        'wui': '1.0000',
+        'mli': '1.0000',
+        'mui': '1.0000',
+        'nsi': '0.9503',
+        'ni': '0.9324',
+        'bi': '1.0000',
+        'peer_index': '9.8954',
+        'rank': 2},
+        {'node': '198.154.93.110:8333',
+        ...
+        'rank': 5}]}
         """
         self._validate_pagination(page, limit)
-        url = f"{self.__base_url}leaderboard/"
+        url = f"{self.__base_url}nodes/leaderboard/"
         optional_params = {"page": page, "limit": limit}
         url = self._add_optional_params(url, optional_params)
 
@@ -544,6 +677,28 @@ class BitnodesAPI:
                 "peer_index": "7.4371",
                 "rank": 3619
             }
+
+        Examples
+        --------
+        In [6]: bn.get_node_ranking(address="31.47.202.112", port=8333) 
+        Out[6]: 
+        {'node': '31.47.202.112:8333',
+        'vi': '1.0000',
+        'si': '0.9907',
+        'hi': '1.0000',
+        'ai': '0.9801',
+        'pi': '1.0000',
+        'dli': '1.0000',
+        'dui': '1.0000',
+        'wli': '1.0000',
+        'wui': '1.0000',
+        'mli': '1.0000',
+        'mui': '1.0000',
+        'nsi': '0.9503',
+        'ni': '0.9324',
+        'bi': '1.0000',
+        'peer_index': '9.8954',
+        'rank': 2}
         """
         self._validate_address_port(address, port)
         url = f"{self.__base_url}nodes/leaderboard/{address}-{port}/"
@@ -588,9 +743,19 @@ class BitnodesAPI:
 
         Examples
         --------
+        In [4]: bn.get_data_propagation_list(limit=5) 
+        Out[4]: 
+        {'count': 100000,
+        'next': 'https://bitnodes.io/api/v1/inv/?limit=5&page=2',
+        'previous': None,
+        'results': [{'inv_hash': 'bd45b4835c82d68fd4c793a2c11c481f22ebe2011838a5a5b1b2a192ca5be6a7'},
+        {'inv_hash': '60dc421ea3961a3bd11398afcd18f5436d951904f2cd1a33c7f98e831d96dc1e'},
+        {'inv_hash': 'c8f932d15398f1c49a51021d3deb7141d48919676d9db259998556a973c2d0f0'},
+        {'inv_hash': '6fb3287162ce77e35c3ddf41adab646d62984e2ae29a3652c3045920812e50a3'},
+        {'inv_hash': '4926e3520374d0e1c71df7998f3041811f1c063783befeb89f6bf560b8492205'}]}
         """
         self._validate_pagination(page, limit)
-        url = f"{self.__base_url}data-propagation/"
+        url = f"{self.__base_url}inv/"
         optional_params = {"page": page, "limit": limit}
         url = self._add_optional_params(url, optional_params)
 
@@ -639,6 +804,25 @@ class BitnodesAPI:
 
         Examples
         --------
+        In [5]: bn.get_data_propagation(inv_hash="51b4cc62ca39f7f7d567b8288a5d73aa29e4e059282077b4fe06eb16db882f37") 
+        Out[5]: 
+        {'inv_hash': '51b4cc62ca39f7f7d567b8288a5d73aa29e4e059282077b4fe06eb16db882f37',
+        'stats': {'mean': 8836,
+        'std': 4040,
+        'min': 145,
+        '50%': 8149,
+        '90%': 17970,
+        'max': 20010,
+        'head': [['217.20.131.64:8333', 1695996990986],
+        ['94.177.8.76:8333', 1695996991131],
+        ['167.71.51.223:8333', 1695996991202],
+        ['81.183.51.15:8333', 1695996991223],
+        ['35.195.234.115:8333', 1695996991227],
+        ['57.128.96.115:8333', 1695996991239],
+        ['5.199.168.101:39388', 1695996991259],
+        ['46.4.41.117:8334', 1695996991260],
+        ['54.146.65.218:8333', 1695996991285],
+        ['217.183.93.159:8333', 1695996991291]]}}
         """
         if not inv_hash:
             raise ValueError("Inventory hash must be a non-empty string.")
@@ -716,6 +900,16 @@ class BitnodesAPI:
 
         Examples
         --------
+        In [4]: bn.get_dns_seeder(record="txt", prefix="x409")
+        Out[4]: 
+        ['b6occtielfswjoizrl6bxki7ecpl4zijqegd5dzk5e66s5fduyhbrtyd.onion',
+        'bznwam37uhpeuodct2ppxkoe4h6xs37vjb64cpb22aiafh75vabqujqd.onion',
+        'dgc6bwlf4ynzcm7xpfpu4wiefvlc7676fk4jkio6jnuiawktyruhdbyd.onion',
+        'eqpprgcdrjfea7lacdplgj6y5uon6psekszqla4byrtjhlhjcgfaibyd.onion',
+        'eu4dj74s2yqakg7ggk4depqe6nmqj7sse6nvhoo4etf25mx35aifgryd.onion',
+        ...
+        '6hanskegwge7hvpqlf7itcwqgk6t3xinldyyhp2xvnfvg4gjwwtw3iqd.onion']
+
         """
         if record.lower() not in ["a", "aaaa", "txt"]:
             raise ValueError("Record must be one of 'a', 'aaaa', 'txt'.")

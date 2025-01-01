@@ -86,8 +86,8 @@ class TestBitnodesAPI:
         expected = (
             "https://bitnodes.io/api/v1/addresses/"
             "?page=2&limit=100&"
-            "q=2a01:e34:ec76:c9d0:2520:5f4d:852d:3aa2&"
-            "q=2601:602:8d00:7070:1868:945c:98e6:d35"
+            "q=2a01:e34:ec76:c9d0:2520:5f4d:852d:3aa2,"
+            "2601:602:8d00:7070:1868:945c:98e6:d35"
         )
         assert unquote(observed) == expected
 
@@ -96,6 +96,13 @@ class TestBitnodesAPI:
         params = {"field": "coordinates"}
         observed = bitnodesapi._add_optional_params(url, params)
         expected = "https://bitnodes.io/api/v1/snapshots/latest/?field=coordinates"
+        assert unquote(observed) == expected
+
+        # test for get nodes list 
+        url = "https://bitnodes.io/api/v1/nodes/leaderboard/"
+        params = {"page": None, "limit": None}
+        observed = bitnodesapi._add_optional_params(url, params)
+        expected = "https://bitnodes.io/api/v1/nodes/leaderboard/"
         assert unquote(observed) == expected
 
     def test_get_snapshots(self, bitnodesapi: BitnodesAPI):
@@ -248,6 +255,7 @@ class TestBitnodesAPI:
         assert "next" in observed.keys()
         assert "previous" in observed.keys()
         assert "results" in observed.keys()
+        assert "inv_hash" in observed["results"][0].keys()
 
     def test_get_data_propagation(self, bitnodesapi: BitnodesAPI, inv_hash: str):
         with pytest.raises(

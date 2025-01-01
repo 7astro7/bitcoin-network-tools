@@ -14,9 +14,24 @@ A library for analyzing and monitoring Bitcoin network nodes
     Explain the data requirements and limitations.
 
 
-## Mention API key considerations 
+## Installation 
+
+## Testing
+
+## Usage    
+
+### Mention API key considerations 
 If used without an api key, requests are limited to 50 per 24 hours. API keys are available at 
 https://bitnodes.io/api/
 
 BITNODES_PUBLIC_KEY, BITNODES_PRIVATE_KEY
 
+In [1]: from bitcoin_network_tools.bitnodes_api import BitnodesAPI
+
+In [2]: bn = BitnodesAPI() 
+
+## Contributing 
+
+## License 
+
+Apache v2.0
