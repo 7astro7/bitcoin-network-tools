@@ -21,10 +21,16 @@ class TestBitnodesAPI:
 
     @pytest.fixture
     def working_address_and_port(self, bitnodesapi: BitnodesAPI) -> tuple:
-        address_list = bitnodesapi.get_address_list()
-        working_address = address_list["results"][0]["address"]
-        working_port = address_list["results"][0]["port"]
-        return working_address, working_port
+        nodes_list = bitnodesapi.get_leaderboard()
+
+        working_address_port = nodes_list["results"][0]["node"]
+        # find an address that does not contain brackets, such as 
+        # [2001:1bc0:c1::2000]:8333'
+        for i in range(1, len(nodes_list["results"])):
+            if "[" not in nodes_list["results"][i]["node"]:
+                working_address_port = nodes_list["results"][i]["node"]
+                break
+        return tuple(working_address_port.split(":"))
 
     @pytest.mark.skipif(ENV_API_KEY, reason="API keys in env: no warning.")
     def test_constructor_warns_unauthenticated(self):
@@ -42,7 +48,9 @@ class TestBitnodesAPI:
 
         assert bitnodesapi.set_public_api_key("true because string")
 
-    def test_get_public_key(self):
+    def test_get_public_key(self, monkeypatch: pytest.MonkeyPatch):
+
+        monkeypatch.delenv("BITNODES_PUBLIC_KEY", raising=False)
         bn = BitnodesAPI(public_api_key="test_public_key")
         assert bn.get_public_api_key() == "test_public_key"
 
@@ -57,7 +65,10 @@ class TestBitnodesAPI:
             f.flush()
             assert bitnodesapi.set_private_key_path(f.name)
 
-    def test_get_private_key(self, bitnodesapi: BitnodesAPI):
+    def test_get_private_key(self, bitnodesapi: BitnodesAPI, monkeypatch: pytest.MonkeyPatch):
+
+        monkeypatch.delenv("BITNODES_PRIVATE_KEY", raising=False)
+
         with pytest.raises(RuntimeError):
             bitnodesapi._get_private_key()
 
@@ -83,6 +94,7 @@ class TestBitnodesAPI:
             ValueError, match="Port must be an integer between 1 and 65535."
         ):
             BitnodesAPI._validate_address_port(address="-99", port=0)
+
         with pytest.raises(
             ValueError,
             match="Port must be an integer or a string that can be converted to an integer.",
@@ -180,19 +192,10 @@ class TestBitnodesAPI:
             ValueError, match="Limit must be an integer between 1 and 100."
         ):
             bitnodesapi.get_address_list(limit=0)
-        with pytest.raises(ValueError, match="q must be a list of strings."):
-            bitnodesapi.get_address_list(
-                q=[
-                    22,
-                    80,
-                ]
-            )
-        observed = bitnodesapi.get_address_list(
-            q=[
-                "2a01:e34:ec76:c9d0:2520:5f4d:852d:3aa2",
-                "2601:602:8d00:7070:1868:945c:98e6:d35",
-            ]
-        )
+        with pytest.raises(ValueError, match="q must be a string representing a single search term."):
+            bitnodesapi.get_address_list(q=[22, 80,])
+
+        observed = bitnodesapi.get_address_list(q=".onion")
         assert isinstance(observed, dict)
         assert "count" in observed.keys()
         assert "next" in observed.keys()
@@ -204,18 +207,18 @@ class TestBitnodesAPI:
     ):
         with pytest.raises(ValueError, match="Address must be a non-empty string."):
             bitnodesapi.get_node_status(address=None)
+        
         with pytest.raises(
             ValueError, match="Port must be an integer between 1 and 65535."
         ):
-            bitnodesapi.get_node_status(address=None)
-        with pytest.raises(ValueError, match="Invalid URL."):
-            bitnodesapi.get_node_status(port=0)
+            bitnodesapi.get_node_status(address="127", port=0)
+        
         working_address, working_port = working_address_and_port
         observed = bitnodesapi.get_node_status(working_address, working_port)
         assert isinstance(observed, dict)
         assert "address" in observed.keys()
         assert "status" in observed.keys()
-        assert "port" in observed.keys()
+        assert "data" in observed.keys()
         assert "mbps" in observed.keys()
 
     def test_get_node_latency(
@@ -226,7 +229,7 @@ class TestBitnodesAPI:
         with pytest.raises(
             ValueError, match="Port must be an integer between 1 and 65535."
         ):
-            bitnodesapi.get_node_latency(port=0)
+            bitnodesapi.get_node_latency(address="127.0.0.1", port=0)
         working_address, working_port = working_address_and_port
         observed = bitnodesapi.get_node_latency(working_address, working_port)
         assert isinstance(observed, dict)
@@ -236,7 +239,7 @@ class TestBitnodesAPI:
 
     def test_get_leaderboard(self, bitnodesapi: BitnodesAPI):
         with pytest.raises(ValueError, match="Page must be an integer."):
-            bitnodesapi.get_leaderboard(page=None)
+            bitnodesapi.get_leaderboard(page="txt")
         with pytest.raises(
             ValueError, match="Limit must be an integer between 1 and 100."
         ):
@@ -253,10 +256,12 @@ class TestBitnodesAPI:
     ):
         with pytest.raises(ValueError, match="Address must be a non-empty string."):
             bitnodesapi.get_node_ranking(address=None)
+
         with pytest.raises(
             ValueError, match="Port must be an integer between 1 and 65535."
         ):
             bitnodesapi.get_node_ranking(address="128.65.194.136", port=0)
+        
         working_address, working_port = working_address_and_port
         observed = bitnodesapi.get_node_ranking(working_address, working_port)
         assert isinstance(observed, dict)
@@ -266,7 +271,7 @@ class TestBitnodesAPI:
 
     def test_get_data_propagation_list(self, bitnodesapi: BitnodesAPI):
         with pytest.raises(ValueError, match="Page must be an integer."):
-            bitnodesapi.get_data_propagation_list(page=None)
+            bitnodesapi.get_data_propagation_list(page="txt")
         with pytest.raises(
             ValueError, match="Limit must be an integer between 1 and 100."
         ):
@@ -298,11 +303,11 @@ class TestBitnodesAPI:
         with pytest.raises(
             ValueError, match="Resolver timeout must be at least 1 second."
         ):
-            bitnodesapi.get_dns_seeder("a", timeout=0)
+            bitnodesapi.get_dns_seeder("a", resolver_timeout=0)
         with pytest.raises(
             ValueError, match="Resolver lifetime must be at least 1 second."
         ):
-            bitnodesapi.get_dns_seeder("a", lifetime=0)
+            bitnodesapi.get_dns_seeder("a", resolver_lifetime=0)
         observed = bitnodesapi.get_dns_seeder("a")
         assert isinstance(observed, list)
         assert len(observed) > 0

@@ -32,6 +32,8 @@ In [2]: bn = BitnodesAPI()
 
 ## Contributing 
 
+Contributions are welcome. Bug reports, feature requests, ideas for scope expansion, documentation, code contributions are appreciated. 
+
 ## License 
 
 Apache v2.0

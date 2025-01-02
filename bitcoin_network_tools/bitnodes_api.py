@@ -347,7 +347,7 @@ class BitnodesAPI:
         return response.json()
 
     def get_address_list(
-        self, page: int = None, limit: int = None, q: list[str] = None
+        self, page: int = None, limit: int = None, q: str = None
     ) -> dict:
         """
         List all IPv4/IPv6/.onion addresses observed by the Bitnodes crawler in
@@ -359,8 +359,11 @@ class BitnodesAPI:
             The page number to retrieve. If None, default of current page (1) will be used.
         limit : int
             The number of addresses to retrieve. If None, default of 10 will be used. Max 100.
-        q : list[str]
-            Search addresses.
+        q : str
+            A pattern used to filter addresses. Supports matching with regular expression syntax 
+            for beginning filtering.
+            Examples:
+            - `^fc`: Matches addresses starting with "fc".
 
         Returns
         -------
@@ -374,13 +377,35 @@ class BitnodesAPI:
 
         Examples
         --------
-
+        In [13]: bn.get_address_list(q=".onion")
+        Out[13]: 
+        {'count': 113000,
+        'next': 'https://bitnodes.io/api/v1/addresses/?page=2&q=.onion',
+        'previous': None,
+        'results': [{'address': 'romjsh6fjm643qkjft52w4lfxacsltbcrav2hd5yt23vkhjl5o452mad.onion',
+        'port': 8333},
+        {'address': 'z7re2iwdl4w6i46aax53qesna7xug7aa6yg23ox6koyxsskxmf3io6ad.onion',
+        'port': 8333},
+        {'address': '5j7z5fovfahxe3gwqt2lthhyxvotcveopld375l2k4rvqccc36lexbad.onion',
+        'port': 8333},
+        {'address': 'ygw7oagmzz4bga6tc2w3q47zv7lnzmxe5yn7z4bjxnlrvyx4zg4he3ad.onion',
+        'port': 8333},
+        {'address': 'vjegtb7ve6dj26xqrbl6txfw6rlurcrit3a2encqkvptt6l47cehfpid.onion',
+        'port': 8333},
+        {'address': 'tewefnepsin4yniz2dcmxjeetvelr74bwveeixo7jglyngri7tr2v2qd.onion',
+        'port': 8333},
+        {'address': 'ouq3uttpj6pvqphvvh6yrbkv3xidph4na3tpsrgi4zx2kbon4na6orqd.onion',
+        'port': 8333},
+        {'address': 'rglv2r4zbk2dp3fvrjjagf4bbvqe2bmakozgb3vrwo4hs7h25g6ndqyd.onion',
+        'port': 8333},
+        {'address': '2d6b2zk7w3ifi76qxgolvuhxmzswlmttq6i5d7vg6x5zqdphkueva2id.onion',
+        'port': 8333},
+        {'address': '4tywk7f5foha6g6inkocmpymkrxzd73m2cprlytdxrbnh3dd4nz3j3ad.onion',
+        'port': 8333}]}
         """
         self._validate_pagination(page, limit)
-        if q is not None:
-            if not isinstance(q, list) or not all(isinstance(i, str) for i in q):
-                raise ValueError("q must be a list of strings.")
-            q = ",".join(q)
+        if q is not None and not isinstance(q, str):
+            raise ValueError("q must be a string representing a single search term.")
         url = f"{self.__base_url}addresses/"
         optional_params = {"page": page, "limit": limit, "q": q}
         url = self._add_optional_params(url, optional_params)
@@ -546,7 +571,8 @@ class BitnodesAPI:
     def get_leaderboard(self, page: int = None, limit: int = None) -> dict:
         """
         List all activated nodes according to their Peer Index (PIX) in descending order.
-        The Bitnodes Peer Index (PIX) is a numerical value that measures its desirability
+        
+        The Bitnodes Peer Index (PIX) is a numerical value that measures its desirability 
         to the Bitcoin network. See https://bitnodes.io/nodes/leaderboard/#peer-index for
         more information.
 
@@ -921,15 +947,17 @@ class BitnodesAPI:
         if record.lower() not in ["a", "aaaa", "txt"]:
             raise ValueError("Record must be one of 'a', 'aaaa', 'txt'.")
         domain = f"{prefix}.seed.bitnodes.io" if prefix else "seed.bitnodes.io"
-        resolver = dns.resolver.Resolver()
+        resolver = dns.resolver.Resolver()        
+
+        if not isinstance(resolver_timeout, int) or resolver_timeout < 1:
+            raise ValueError("Resolver timeout must be at least 1 second.")
+        if not isinstance(resolver_lifetime, int) or resolver_lifetime < 1:
+            raise ValueError("Resolver lifetime must be at least 1 second.")
+        resolver.timeout = resolver_timeout
+        resolver.lifetime = resolver_lifetime
+        
         try:
             if record.lower() == "txt":
-                if not isinstance(resolver_timeout, int) or resolver_timeout < 1:
-                    raise ValueError("Resolver timeout must be at least 1 second.")
-                if not isinstance(resolver_lifetime, int) or resolver_lifetime < 1:
-                    raise ValueError("Resolver lifetime must be at least 1 second.")
-                resolver.timeout = resolver_timeout
-                resolver.lifetime = resolver_lifetime
 
                 txt_records = resolver.resolve(domain, "TXT")
                 onion_addresses = [
