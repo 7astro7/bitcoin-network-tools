@@ -172,10 +172,6 @@ class BitnodesAPI:
             The URL string with the optional parameters added.
         """
         params = {k: v for k, v in optional_params.items() if v is not None}
-        for k, v in params.items():
-            if isinstance(v, list):
-                params[k] = ",".join(v)
-
         return f"{og_url_str}?{urlencode(params)}" if params else og_url_str
 
     def get_snapshots(self, page: int = None, limit: int = None) -> dict:
@@ -206,6 +202,7 @@ class BitnodesAPI:
         Examples
         --------
         In [3]: bn.get_snapshots(limit=5)
+
         Out[3]:
         {'count': 8614,
         'next': 'https://bitnodes.io/api/v1/snapshots/?limit=5&page=2',
@@ -292,6 +289,7 @@ class BitnodesAPI:
         Examples
         --------
         In [6]: bn.get_nodes_list(timestamp="1735684735", field="user_agents")
+
         Out[6]:
         {'timestamp': 1735684735,
         'total_nodes': 20772,
@@ -360,7 +358,7 @@ class BitnodesAPI:
         limit : int
             The number of addresses to retrieve. If None, default of 10 will be used. Max 100.
         q : str
-            A pattern used to filter addresses. Supports matching with regular expression syntax 
+            A pattern used to filter addresses. Supports matching with regular expression syntax
             for beginning filtering.
             Examples:
             - `^fc`: Matches addresses starting with "fc".
@@ -378,7 +376,8 @@ class BitnodesAPI:
         Examples
         --------
         In [13]: bn.get_address_list(q=".onion")
-        Out[13]: 
+
+        Out[13]:
         {'count': 113000,
         'next': 'https://bitnodes.io/api/v1/addresses/?page=2&q=.onion',
         'previous': None,
@@ -461,6 +460,7 @@ class BitnodesAPI:
         Examples
         --------
         In [4]: bn.get_node_status(address="31.47.202.112", port=8333)
+
         Out[4]:
         {'address': '31.47.202.112',
         'status': 'UP',
@@ -504,10 +504,10 @@ class BitnodesAPI:
         Get daily, weekly and monthly latency data for an activated node. New node must be
         activated separately, i.e. from https://bitnodes.io/nodes/<ADDRESS>-<PORT>/, before
         it can be accessed from this endpoint.
-            t - Timestamp of this data point.
-            v - Average latency of this node in milliseconds;
-                v = -1 (node is unreachable),
-                v = 0 (node is reachable but no latency data is available).
+        t - Timestamp of this data point.
+        v - Average latency of this node in milliseconds;
+        v = -1 (node is unreachable),
+        v = 0 (node is reachable but no latency data is available).
 
         Parameters
         ----------
@@ -527,6 +527,7 @@ class BitnodesAPI:
         Examples
         --------
         In [5]: bn.get_node_latency(address="31.47.202.112", port=8333)
+
         Out[5]:
         {'daily_latency': [{'t': 1735602300, 'v': 23},
         {'t': 1735603200, 'v': 23},
@@ -571,8 +572,8 @@ class BitnodesAPI:
     def get_leaderboard(self, page: int = None, limit: int = None) -> dict:
         """
         List all activated nodes according to their Peer Index (PIX) in descending order.
-        
-        The Bitnodes Peer Index (PIX) is a numerical value that measures its desirability 
+
+        The Bitnodes Peer Index (PIX) is a numerical value that measures its desirability
         to the Bitcoin network. See https://bitnodes.io/nodes/leaderboard/#peer-index for
         more information.
 
@@ -610,6 +611,7 @@ class BitnodesAPI:
         Examples
         --------
         In [4]: bn.get_leaderboard(limit=5)
+
         Out[4]:
         {'count': 13163,
         'next': 'https://bitnodes.io/api/v1/nodes/leaderboard/?limit=5&page=2',
@@ -714,6 +716,7 @@ class BitnodesAPI:
         Examples
         --------
         In [6]: bn.get_node_ranking(address="31.47.202.112", port=8333)
+
         Out[6]:
         {'node': '31.47.202.112:8333',
         'vi': '1.0000',
@@ -755,8 +758,8 @@ class BitnodesAPI:
     def get_data_propagation_list(self, page: int = None, limit: int = None) -> dict:
         """
         List up to 100,000 recent inventory hashes (latest to oldest) with propagation stats
-        available through data propagation endpoint. Bitnodes samples at most only
-        1000 transaction invs per block.
+        available through data propagation endpoint. Bitnodes samples at most only 1000
+        transaction invs per block.
 
         Parameters
         ----------
@@ -777,6 +780,7 @@ class BitnodesAPI:
         Examples
         --------
         In [4]: bn.get_data_propagation_list(limit=5)
+
         Out[4]:
         {'count': 100000,
         'next': 'https://bitnodes.io/api/v1/inv/?limit=5&page=2',
@@ -838,6 +842,7 @@ class BitnodesAPI:
         Examples
         --------
         In [5]: bn.get_data_propagation(inv_hash="51b4cc62ca39f7f7d567b8288a5d73aa29e4e059282077b4fe06eb16db882f37")
+
         Out[5]:
         {'inv_hash': '51b4cc62ca39f7f7d567b8288a5d73aa29e4e059282077b4fe06eb16db882f37',
         'stats': {'mean': 8836,
@@ -934,6 +939,7 @@ class BitnodesAPI:
         Examples
         --------
         In [4]: bn.get_dns_seeder(record="txt", prefix="x409")
+
         Out[4]:
         ['b6occtielfswjoizrl6bxki7ecpl4zijqegd5dzk5e66s5fduyhbrtyd.onion',
         'bznwam37uhpeuodct2ppxkoe4h6xs37vjb64cpb22aiafh75vabqujqd.onion',
@@ -947,7 +953,7 @@ class BitnodesAPI:
         if record.lower() not in ["a", "aaaa", "txt"]:
             raise ValueError("Record must be one of 'a', 'aaaa', 'txt'.")
         domain = f"{prefix}.seed.bitnodes.io" if prefix else "seed.bitnodes.io"
-        resolver = dns.resolver.Resolver()        
+        resolver = dns.resolver.Resolver()
 
         if not isinstance(resolver_timeout, int) or resolver_timeout < 1:
             raise ValueError("Resolver timeout must be at least 1 second.")
@@ -955,7 +961,7 @@ class BitnodesAPI:
             raise ValueError("Resolver lifetime must be at least 1 second.")
         resolver.timeout = resolver_timeout
         resolver.lifetime = resolver_lifetime
-        
+
         try:
             if record.lower() == "txt":
 
@@ -978,9 +984,3 @@ class BitnodesAPI:
 
         except dns.exception.DNSException as e:
             raise RuntimeError(f"An error occurred while querying DNS: {e}")
-
-
-if __name__ == "__main__":
-    bn = BitnodesAPI()
-    #    print(b.get_node_status())
-    print(b.get_dns_seeder2())

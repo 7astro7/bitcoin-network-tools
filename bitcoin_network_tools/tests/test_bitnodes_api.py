@@ -111,17 +111,13 @@ class TestBitnodesAPI:
         params = {
             "page": 2,
             "limit": 100,
-            "q": [
-                "2a01:e34:ec76:c9d0:2520:5f4d:852d:3aa2",
-                "2601:602:8d00:7070:1868:945c:98e6:d35",
-            ],
+            "q": ".onion",
         }
         observed = bitnodesapi._add_optional_params(url, params)
         expected = (
             "https://bitnodes.io/api/v1/addresses/"
             "?page=2&limit=100&"
-            "q=2a01:e34:ec76:c9d0:2520:5f4d:852d:3aa2,"
-            "2601:602:8d00:7070:1868:945c:98e6:d35"
+            "q=.onion"
         )
         assert unquote(observed) == expected
 
