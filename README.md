@@ -1,38 +1,121 @@
 
-## Bitcoin Network Tools
+# Bitcoin Network Tools
 
 A Python wrapper for https://bitnodes.io/api/. 
-Credit to this library for making this possible https://github.com/ayeowch/bitnodes.git
 
-Users can work with or without API keys, supporting both authenticated and unauthenticated requests.
+This library provides tools for analyzing and monitoring Bitcoin network nodes. It supports both authenticated and unauthenticated requests, allowing flexibility based on your usage needs.
 
-###
-A library for analyzing and monitoring Bitcoin network nodes
+# Features
 
-    Provide clear and concise instructions on how to install and use your library.
-    Include examples and explanations of the different analysis functions.
-    Explain the data requirements and limitations.
+- Easy-to-use Python wrapper for the Bitnodes API
+- Analyze and monitor Bitcoin network nodes with minimal setup
+- Support for authenticated requests using an API key
+- Includes node status, latency, leaderboard, and propagation statistics
 
 
-## Installation 
+# Installation 
 
-## Testing
+```
+pip install bitcoin-network-tools
+```
 
-## Usage    
+# Usage    
 
-### Mention API key considerations 
-If used without an api key, requests are limited to 50 per 24 hours. API keys are available at 
-https://bitnodes.io/api/
+## Initialization
 
-BITNODES_PUBLIC_KEY, BITNODES_PRIVATE_KEY
+If BITNODES_PUBLIC_KEY and BITNODES_PRIVATE_KEY are set as environment variables, they will be used for authenticated 
+requests by default. 
 
-In [1]: from bitcoin_network_tools.bitnodes_api import BitnodesAPI
+Keys can also be configured via the constructor:
+```
+from bitcoin_network_tools.bitnodes_api import BitnodesAPI
+bn = BitnodesAPI()
+bn = BitnodesAPI(public_api_key="your_public_key", private_key_path="path_to_private_key")
+```
 
-In [2]: bn = BitnodesAPI() 
+The public and private keys can be set with 
 
-## Contributing 
+```
+In [3]: bn.set_public_api_key("examplekey")
+Out[3]: True
 
-Contributions are welcome. Bug reports, feature requests, ideas for scope expansion, documentation, code contributions are appreciated. 
+In [4]: bn.set_private_key_path("private_key.txt") 
+Out[4]: True
+```
+
+The private key is never stored. 
+
+API keys are available at https://bitnodes.io/api/. 
+Snapshot data is retained on Bitnodes servers for up to 60 days.
+
+## Example Requests
+### Fetch Snapshots
+
+```
+In [3]: bn.get_snapshots(limit=5)
+Out[3]: 
+{'count': 8612,
+ 'next': 'https://bitnodes.io/api/v1/snapshots/?limit=5&page=2',
+ 'previous': None,
+ 'results': [{'url': 'https://bitnodes.io/api/v1/snapshots/1735849765/',
+   'timestamp': 1735849765,
+   'total_nodes': 20833,
+   'latest_height': 877541},
+  {'url': 'https://bitnodes.io/api/v1/snapshots/1735849164/',
+   'timestamp': 1735849164,
+   'total_nodes': 20816,
+   'latest_height': 877541},
+  {'url': 'https://bitnodes.io/api/v1/snapshots/1735848574/',
+   'timestamp': 1735848574,
+   'total_nodes': 20265,
+   'latest_height': 877541},
+  {'url': 'https://bitnodes.io/api/v1/snapshots/1735847963/',
+   'timestamp': 1735847963,
+   'total_nodes': 20293,
+   'latest_height': 877541},
+  {'url': 'https://bitnodes.io/api/v1/snapshots/1735847372/',
+   'timestamp': 1735847372,
+   'total_nodes': 20298,
+   'latest_height': 877538}]}
+```
+
+### Retrieve Node Status
+
+```
+In [4]: bn.get_node_status(address="31.47.202.112", port=8333)
+Out[4]:
+{'address': '31.47.202.112',
+'status': 'UP',
+'data': [70016,
+'/Satoshi:27.1.0/',
+1734410285,
+3081,
+877256,
+'btc.dohmen.net',
+'Gothenburg',
+'SE',
+57.7065,
+11.967,
+'Europe/Stockholm',
+'AS34385',
+'Tripnet AB'],
+'mbps': '38.850493'}
+```
+
+# Testing
+
+Tests can be run with BITNODES_PUBLIC_KEY and BITNODES_PRIVATE_KEY environment variables set and 
+
+```
+pytest
+```
+
+# Contributing 
+
+Contributions are welcome! Here's how you can contribute:
+1. Report bugs or request features by opening an issue.
+2. Fork the repository and create a pull request for code contributions.
+3. Expand the documentation or propose new analysis features.
 
 ## License 
 
