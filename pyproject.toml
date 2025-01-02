@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=42", "wheel", "versioneer"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bitcoin_network_tools"
+description = "A wrapper for the Bitnodes API."
+readme = "README.md"
+license = {text = "Apache Software License"}
+requires-python = ">=3.6"
+authors = [{name = "Zachary A. Kraehling", email = "zak@zakkraehling.net"}]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Internet :: WWW/HTTP"
+]
+keywords = [
+    "bitcoin",
+    "blockchain",
+    "cryptocurrency",
+    "network analysis",
+    "bitnodes",
+    "api",
+    "tools",
+    "python",
+    "development",
+    "crypto",
+    "financial technology",
+    "decentralized networks"
+]
+urls = {homepage = "https://github.com/7astro7/bitcoin_network_tools", 
+        source = "https://github.com/7astro7/bitcoin_network_tools", 
+        tracker = "https://github.com/7astro7/bitcoin-network-tools/issues"}
+
+[project.dependencies]
+requests = "2.32.3"
+dnspython = "2.7.0"
+
+[project.optional-dependencies]
+dev = ["pytest", "flake8"]
+
+[tool.setuptools.entry-points.console_scripts]
+bitcoin_network_tools = "bitcoin_network_tools.cli:main"
+
+[tool.setuptools]
+test_suite = "bitcoin_network_tools.tests"
+
+[project.scripts]
+bitcoin_network_tools = "bitcoin_network_tools.cli:main"
+
+[tool.versioneer]
+vcs = "git"
+style = "pep440"
+versionfile_source = "<your_package_name>/_version.py"
+versionfile_build = "<your_package_name>/_version.py"
+tag_prefix = ""
+parentdir_prefix = "<your_package_name>-"
