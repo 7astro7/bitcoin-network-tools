@@ -70,6 +70,14 @@ Out[4]: True
 
 Note: The private key is used ephemerally and **never** stored.
 
+#### Private Key File Format
+
+For authenticated requests using `private_key_path`, ensure the file adheres to the following:
+
+- The file must contain the raw private key on a single line.
+- Do **not** include quotes, extra spaces, or additional characters.
+
+
 API keys are available at https://bitnodes.io/api/. 
 Snapshot data is retained on Bitnodes servers for up to 60 days.
 

@@ -46,6 +46,7 @@ class BitnodesAPI:
                 "Warning: Bitnodes API is being used in unauthenticated mode.",
                 UserWarning,
             )
+        self.__private_key_path = private_key_path
 
     def set_public_api_key(self, public_api_key: str) -> bool:
         """
@@ -84,7 +85,10 @@ class BitnodesAPI:
         Parameters
         ----------
         path_to_private_key : str
-            The path to the private key file for the Bitnodes API.
+            The path to the private key file for the Bitnodes API. Ensure 
+            the file adheres to the following:
+            1. The file must contain the raw private key on a single line.
+            2. Do not include quotes, extra spaces, or additional characters.
 
         Returns
         -------
