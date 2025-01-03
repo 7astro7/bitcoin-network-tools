@@ -5,6 +5,17 @@ A Python wrapper for https://bitnodes.io/api/.
 
 This library provides tools for analyzing and monitoring Bitcoin network nodes. It supports both authenticated and unauthenticated requests, allowing flexibility based on your usage needs.
 
+## Table of Contents
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Initialization](#initialization)
+  - [Example Requests](#example-requests)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
+
+
 # Features
 
 - Easy-to-use Python wrapper for the Bitnodes API
@@ -15,27 +26,41 @@ This library provides tools for analyzing and monitoring Bitcoin network nodes. 
 
 # Installation 
 
-```
+### Install from PyPI
+```bash
 pip install bitcoin-network-tools
 ```
 
-# Usage    
+### Install from Source
 
-## Initialization
-
-If BITNODES_PUBLIC_KEY and BITNODES_PRIVATE_KEY are set as environment variables, they will be used for authenticated 
-requests by default. 
-
-Keys can also be configured via the constructor:
+Clone the repository and install:
+```bash
+git clone https://github.com/your-repo/bitcoin-network-tools.git
+cd bitcoin-network-tools
+pip install .
 ```
+
+## Usage
+
+### Initialization
+
+This library supports both authenticated and unauthenticated requests. To authenticate, set `BITNODES_PUBLIC_KEY` and `BITNODES_PRIVATE_KEY` as environment variables or pass them directly during initialization.
+
+#### Example Initialization
+
+```python
 from bitcoin_network_tools.bitnodes_api import BitnodesAPI
+
+# Unauthenticated
 bn = BitnodesAPI()
+
+# Authenticated
 bn = BitnodesAPI(public_api_key="your_public_key", private_key_path="path_to_private_key")
 ```
 
-The public and private keys can be set with 
+Keys can also be configured after initialization:
 
-```
+```python
 In [3]: bn.set_public_api_key("examplekey")
 Out[3]: True
 
@@ -43,15 +68,21 @@ In [4]: bn.set_private_key_path("private_key.txt")
 Out[4]: True
 ```
 
-The private key is never stored. 
+Note: The private key is used ephemerally and **never** stored.
 
 API keys are available at https://bitnodes.io/api/. 
 Snapshot data is retained on Bitnodes servers for up to 60 days.
 
+### API Key Considerations
+- Without an API key: Limited to **50 requests per 24 hours**.
+- With an API key: Up to **200,000 requests per 24 hours**.
+
 ## Example Requests
 ### Fetch Snapshots
+Retrieves a list of snapshots from the server, showing details such as timestamp, total nodes, and block height.
 
-```
+
+```python
 In [3]: bn.get_snapshots(limit=5)
 Out[3]: 
 {'count': 8612,
@@ -80,8 +111,9 @@ Out[3]:
 ```
 
 ### Retrieve Node Status
+Get the status of a specific node:
 
-```
+```python
 In [4]: bn.get_node_status(address="31.47.202.112", port=8333)
 Out[4]:
 {'address': '31.47.202.112',
@@ -117,6 +149,6 @@ Contributions are welcome! Here's how you can contribute:
 2. Fork the repository and create a pull request for code contributions.
 3. Expand the documentation or propose new analysis features.
 
-## License 
+# License 
 
 Apache v2.0
