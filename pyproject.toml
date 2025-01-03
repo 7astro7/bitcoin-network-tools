@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bitcoin_network_tools"
+version = "0.0.1"
 description = "A wrapper for the Bitnodes API."
 readme = "README.md"
 license = {text = "Apache Software License"}
@@ -52,11 +53,3 @@ test_suite = "bitcoin_network_tools.tests"
 
 [project.scripts]
 bitcoin_network_tools = "bitcoin_network_tools.cli:main"
-
-[tool.versioneer]
-vcs = "git"
-style = "pep440"
-versionfile_source = "<your_package_name>/_version.py"
-versionfile_build = "<your_package_name>/_version.py"
-tag_prefix = ""
-parentdir_prefix = "<your_package_name>-"
