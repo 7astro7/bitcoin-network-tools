@@ -1,4 +1,8 @@
 
+[![PyPI](https://img.shields.io/pypi/v/bitcoin-network-tools)](https://pypi.org/project/bitcoin-network-tools/)
+![GitHub issues](https://img.shields.io/github/issues/7astro7/bitcoin-network-tools)
+![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
+
 # Bitcoin Network Tools
 
 A Python wrapper for https://bitnodes.io/api/. 
