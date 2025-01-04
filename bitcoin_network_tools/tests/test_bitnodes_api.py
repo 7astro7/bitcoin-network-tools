@@ -290,7 +290,8 @@ class TestBitnodesAPI:
         assert isinstance(observed, dict)
         assert "inv_hash" in observed.keys()
         assert "stats" in observed.keys()
-
+    
+    @pytest.mark.skipif("CI" in os.environ, reason="Skipping DNS test in CI environment")
     def test_get_dns_seeder(self, bitnodesapi: BitnodesAPI):
         with pytest.raises(
             ValueError, match="Record must be one of 'a', 'aaaa', 'txt'."
