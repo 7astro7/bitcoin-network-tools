@@ -1,41 +1,41 @@
 name: CI with Coverage
 
 on:
-    push:
-      branches: 
-        - '**'
-    pull_request:
-      branches: 
-        - '**'  
+  push:
+    branches:
+      - '***'
+  pull_request:
+    branches:
+      - '***'
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         python-version: [3.8, 3.9, 3.10, 3.11, 3.12]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest pytest-cov
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
 
-    - name: Run tests and generate coverage report
-      run: |
-        pytest --cov=bitcoin_network_tools --cov-report=xml --cov-fail-under=80
+      - name: Run Unit Tests
+        run: pytest tests/
 
+      - name: Generate Coverage Report
+        run: pytest --cov=bitcoin_network_tools --cov-report=xml:coverage.xml --cov-fail-under=80
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}  # Optional for public repos
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
