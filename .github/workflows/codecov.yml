@@ -40,8 +40,8 @@ jobs:
       - name: Generate Coverage Report
         run: pytest --cov=bitcoin_network_tools --cov-report=xml:coverage.xml --cov-fail-under=80
 
-      - name: Upload Coverage to Codecov
-        run: bash <(curl -s https://codecov.io/bash)
-        env:
-            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: 7astro7/bitcoin-network-tools
