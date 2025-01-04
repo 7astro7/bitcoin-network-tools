@@ -2,6 +2,9 @@
 [![PyPI](https://img.shields.io/pypi/v/bitcoin-network-tools)](https://pypi.org/project/bitcoin-network-tools/)
 ![GitHub issues](https://img.shields.io/github/issues/7astro7/bitcoin-network-tools)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
+[![codecov](https://codecov.io/gh/7astro7/bitcoin-network-tools/branch/master/graph/badge.svg)](https://codecov.io/gh/7astro7/bitcoin-network-tools)
+![Unit Tests](https://github.com/7astro7/bitcoin-network-tools/actions/workflows/unittest.yml/badge.svg)
+
 
 # Bitcoin Network Tools
 
