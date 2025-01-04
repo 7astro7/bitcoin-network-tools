@@ -34,7 +34,7 @@ jobs:
           pip install pytest pytest-cov
 
       - name: Run Unit Tests
-        run: pytest tests/
+        run: pytest bitcoin_network_tools/tests
 
       - name: Generate Coverage Report
         run: pytest --cov=bitcoin_network_tools --cov-report=xml:coverage.xml --cov-fail-under=80
